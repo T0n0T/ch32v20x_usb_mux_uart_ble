@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "../config/board_caps.h"
+#include "../ble/ble_host_manager.h"
 #include "../uart/uart_manager.h"
 #include "../usb/usb_tx_sched.h"
 
@@ -72,6 +73,18 @@ void VendorRouter_Dispatch(const vp_hdr_t *hdr, const uint8_t *payload, uint16_t
         }
 
         (void)UartMgr_WriteFromHost(hdr->ch_id, payload, payload_len);
+        return;
+    }
+
+    if(hdr->ch_type == VP_CH_BLE_MGMT)
+    {
+        if(hdr->msg_type != VP_MSG_CMD)
+        {
+            VendorRouter_QueueStatusRsp(hdr, VP_STATUS_ERR_INVALID_PARAM);
+            return;
+        }
+
+        BleHostMgr_HandleMgmt(hdr, payload, payload_len);
         return;
     }
 

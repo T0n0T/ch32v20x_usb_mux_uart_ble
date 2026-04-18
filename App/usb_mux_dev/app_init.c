@@ -113,11 +113,13 @@ extern void USBTX_Init(void);
 extern void USBMUX_DeviceInit(void);
 extern void VendorRouter_Init(void);
 extern void UartMgr_Init(void);
+extern void BleHostMgr_Init(void);
 
 void APP_Init(void)
 {
     WCHBLE_Init();
     HAL_Init();
+    BleHostMgr_Init();
     USBRX_Init();
     USBTX_Init();
     UartMgr_Init();

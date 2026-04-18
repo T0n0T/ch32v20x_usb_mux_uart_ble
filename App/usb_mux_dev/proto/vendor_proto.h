@@ -40,6 +40,18 @@ typedef enum {
 } vp_uart_opcode_t;
 
 typedef enum {
+    VP_BLE_GET_CAP        = 0x01,
+    VP_BLE_SET_SCAN_PARAM = 0x02,
+    VP_BLE_SCAN_START     = 0x03,
+    VP_BLE_SCAN_STOP      = 0x04,
+    VP_BLE_CONNECT        = 0x05,
+    VP_BLE_DISCONNECT     = 0x06,
+    VP_BLE_GET_CONN_STATE = 0x07,
+    VP_BLE_EVT_SCAN_RSP   = 0x80,
+    VP_BLE_EVT_CONN_STATE = 0x81,
+} vp_ble_opcode_t;
+
+typedef enum {
     VP_STATUS_OK                     = 0x0000,
     VP_STATUS_ERR_BAD_MAGIC          = 0x0001,
     VP_STATUS_ERR_BAD_VERSION        = 0x0002,

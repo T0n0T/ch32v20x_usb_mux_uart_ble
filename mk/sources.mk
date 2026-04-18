@@ -5,6 +5,8 @@ APP_SRCS := \
 	App/usb_mux_dev/common/event_queue.c \
 	App/usb_mux_dev/common/stats.c \
 	App/usb_mux_dev/config/uart_map_config.c \
+	App/usb_mux_dev/ble/ble_att_cache.c \
+	App/usb_mux_dev/ble/ble_host_manager.c \
 	App/usb_mux_dev/proto/vendor_proto_codec.c \
 	App/usb_mux_dev/proto/vendor_router.c \
 	App/usb_mux_dev/uart/uart_manager.c \
