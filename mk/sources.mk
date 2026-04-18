@@ -1,6 +1,10 @@
 APP_SRCS := \
 	App/usb_mux_dev/main.c \
-	App/usb_mux_dev/app_init.c
+	App/usb_mux_dev/app_init.c \
+	App/usb_mux_dev/common/ring_buffer.c \
+	App/usb_mux_dev/common/event_queue.c \
+	App/usb_mux_dev/common/stats.c \
+	App/usb_mux_dev/proto/vendor_proto_codec.c
 
 CORE_SRCS := \
 	Core/core_riscv.c \
