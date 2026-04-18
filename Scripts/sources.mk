@@ -37,3 +37,19 @@ STARTUP_SRCS := \
 
 BLE_SRCS := \
 	BLE/ble_task_scheduler.S
+
+LIBS := BLE/libwchble.a
+
+INCLUDES := \
+	-I. \
+	-IApp/usb_mux_dev/common \
+	-IApp/usb_mux_dev/config \
+	-IApp/usb_mux_dev/include \
+	-IApp/usb_mux_dev/proto \
+	-IApp/usb_mux_dev/uart \
+	-IApp/usb_mux_dev/usb \
+	-IBLE \
+	-ICore \
+	-IDebug \
+	-IPeripheral/inc \
+	-IUser

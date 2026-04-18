@@ -1,17 +1,16 @@
 TARGET := ch32v208_usb_mux_ble_host
-BUILD_DIR := build
-OUT_DIR := out
+OUT_DIR := Out
 
-include mk/toolchain.mk
-include mk/sources.mk
-include mk/rules.mk
+include Scripts/sources.mk
+include Scripts/toolchain.mk
+include Scripts/rules.mk
 
 .PHONY: all clean size list
 
 all: $(OUT_DIR)/$(TARGET).elf $(OUT_DIR)/$(TARGET).hex $(OUT_DIR)/$(TARGET).lst
 
 clean:
-	rm -rf $(BUILD_DIR) $(OUT_DIR)
+	rm -rf $(OUT_DIR)
 
 size: $(OUT_DIR)/$(TARGET).elf
 	$(SIZE) --format=berkeley $<

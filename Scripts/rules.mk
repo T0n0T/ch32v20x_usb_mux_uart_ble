@@ -1,7 +1,7 @@
 SRCS := $(APP_SRCS) $(CORE_SRCS) $(PERIPH_SRCS) $(STARTUP_SRCS) $(BLE_SRCS)
 C_SRCS := $(filter %.c,$(SRCS))
 ASM_SRCS := $(filter %.S,$(SRCS))
-OBJS := $(addprefix $(BUILD_DIR)/,$(C_SRCS:.c=.o)) $(addprefix $(BUILD_DIR)/,$(ASM_SRCS:.S=.o))
+OBJS := $(addprefix $(OUT_DIR)/obj/,$(C_SRCS:.c=.o)) $(addprefix $(OUT_DIR)/obj/,$(ASM_SRCS:.S=.o))
 DEPS := $(OBJS:.o=.d)
 
 $(OUT_DIR)/$(TARGET).elf: $(OBJS) | $(OUT_DIR)
@@ -13,11 +13,11 @@ $(OUT_DIR)/$(TARGET).hex: $(OUT_DIR)/$(TARGET).elf | $(OUT_DIR)
 $(OUT_DIR)/$(TARGET).lst: $(OUT_DIR)/$(TARGET).elf | $(OUT_DIR)
 	$(OBJDUMP) --source --all-headers --demangle -M xw --line-numbers --wide $< > $@
 
-$(BUILD_DIR)/%.o: %.c
+$(OUT_DIR)/obj/%.o: %.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -MMD -MP -c $< -o $@
 
-$(BUILD_DIR)/%.o: %.S
+$(OUT_DIR)/obj/%.o: %.S
 	@mkdir -p $(dir $@)
 	$(AS) $(ASFLAGS) -MMD -MP -c $< -o $@
 

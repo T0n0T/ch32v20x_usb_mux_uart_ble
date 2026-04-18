@@ -2,6 +2,8 @@
 *.d
 *.obj
 *.elf
+*.map
+*.lst
 **/.cache
 **/compile_commands.json
 
