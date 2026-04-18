@@ -25,6 +25,21 @@ typedef enum {
 } vp_msg_type_t;
 
 typedef enum {
+    VP_UART_GET_PORT_CAP      = 0x01,
+    VP_UART_GET_PORT_MAP      = 0x02,
+    VP_UART_OPEN              = 0x03,
+    VP_UART_CLOSE             = 0x04,
+    VP_UART_SET_LINE_CODING   = 0x05,
+    VP_UART_SET_FLOW_CTRL     = 0x06,
+    VP_UART_SET_MODEM_SIGNALS = 0x07,
+    VP_UART_GET_MODEM_STATUS  = 0x08,
+    VP_UART_SEND_BREAK        = 0x09,
+    VP_UART_FLUSH_RX          = 0x0A,
+    VP_UART_FLUSH_TX          = 0x0B,
+    VP_UART_GET_STATS         = 0x0C,
+} vp_uart_opcode_t;
+
+typedef enum {
     VP_STATUS_OK                     = 0x0000,
     VP_STATUS_ERR_BAD_MAGIC          = 0x0001,
     VP_STATUS_ERR_BAD_VERSION        = 0x0002,

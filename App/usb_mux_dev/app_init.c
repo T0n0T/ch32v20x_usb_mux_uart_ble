@@ -112,6 +112,7 @@ extern void USBRX_Init(void);
 extern void USBTX_Init(void);
 extern void USBMUX_DeviceInit(void);
 extern void VendorRouter_Init(void);
+extern void UartMgr_Init(void);
 
 void APP_Init(void)
 {
@@ -119,6 +120,7 @@ void APP_Init(void)
     HAL_Init();
     USBRX_Init();
     USBTX_Init();
+    UartMgr_Init();
     VendorRouter_Init();
     USBMUX_DeviceInit();
 }

@@ -4,6 +4,7 @@
 #include "HAL.h"
 #include "App/usb_mux_dev/usb/usb_rx_fsm.h"
 #include "App/usb_mux_dev/usb/usb_tx_sched.h"
+#include "App/usb_mux_dev/uart/uart_manager.h"
 
 #ifndef BLE_MEMHEAP_SIZE
 #define BLE_MEMHEAP_SIZE 4096U
@@ -17,12 +18,15 @@ int main(void)
 {
     SystemCoreClockUpdate();
     Delay_Init();
+#if(APP_ENABLE_DEBUG_UART == TRUE)
     USART_Printf_Init(115200);
+#endif
     APP_Init();
 
     while(1)
     {
         USBRX_Process();
+        UartMgr_Process();
         USBTX_Process();
         TMOS_SystemProcess();
     }

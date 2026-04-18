@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "../config/board_caps.h"
+#include "../uart/uart_manager.h"
 #include "../usb/usb_tx_sched.h"
 
 #define VENDOR_SYS_CAP_UART_MASK          0x0000000FU
@@ -47,6 +48,30 @@ void VendorRouter_Dispatch(const vp_hdr_t *hdr, const uint8_t *payload, uint16_t
 {
     if(hdr == 0)
     {
+        return;
+    }
+
+    if(hdr->ch_type == VP_CH_UART_CTRL)
+    {
+        if(hdr->msg_type != VP_MSG_CMD)
+        {
+            VendorRouter_QueueStatusRsp(hdr, VP_STATUS_ERR_INVALID_PARAM);
+            return;
+        }
+
+        UartMgr_HandleCtrl(hdr, payload, payload_len);
+        return;
+    }
+
+    if(hdr->ch_type == VP_CH_UART_DATA)
+    {
+        if(hdr->msg_type != VP_MSG_DATA)
+        {
+            VendorRouter_QueueStatusRsp(hdr, VP_STATUS_ERR_INVALID_PARAM);
+            return;
+        }
+
+        (void)UartMgr_WriteFromHost(hdr->ch_id, payload, payload_len);
         return;
     }
 

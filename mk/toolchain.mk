@@ -7,7 +7,12 @@ SIZE := riscv-none-embed-size
 ARCH_FLAGS := -march=rv32imacxw -mabi=ilp32 -mcmodel=medany -msmall-data-limit=8 -mno-save-restore
 INCLUDES := \
 	-I. \
+	-IApp/usb_mux_dev/common \
+	-IApp/usb_mux_dev/config \
 	-IApp/usb_mux_dev/include \
+	-IApp/usb_mux_dev/proto \
+	-IApp/usb_mux_dev/uart \
+	-IApp/usb_mux_dev/usb \
 	-IBLE \
 	-ICore \
 	-IDebug \
