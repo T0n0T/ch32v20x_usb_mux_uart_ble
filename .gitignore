@@ -4,3 +4,7 @@
 *.elf
 **/.cache
 **/compile_commands.json
+
+.codex*
+**EXAM
+*.zip
