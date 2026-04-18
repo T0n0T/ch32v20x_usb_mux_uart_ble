@@ -9,8 +9,9 @@
 ;* Copyright (c) 2021 Nanjing Qinheng Microelectronics Co., Ltd.
 ;* Attention: This software (modified or not) and binary are used for 
 ;* microcontroller manufactured by Nanjing Qinheng Microelectronics.
-*******************************************************************************/
+;*******************************************************************************/
 
+	.extern	main
 	.section	.init,"ax",@progbits
 	.global	_start
 	.align	1
@@ -222,8 +223,10 @@ OSCWakeUp_IRQHandler:
 	j 1b
 
 	.section	.text.handle_reset,"ax",@progbits
+	.global	Reset_Handler
 	.weak	handle_reset
 	.align	1
+Reset_Handler:
 handle_reset:
 .option push 
 .option	norelax 
@@ -271,5 +274,3 @@ handle_reset:
 	la t0, main
 	csrw mepc, t0
 	mret
-
-
