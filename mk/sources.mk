@@ -17,8 +17,12 @@ CORE_SRCS := \
 	User/ch32v20x_it.c
 
 PERIPH_SRCS := \
+	Peripheral/src/ch32v20x_bkp.c \
+	Peripheral/src/ch32v20x_flash.c \
 	Peripheral/src/ch32v20x_gpio.c \
 	Peripheral/src/ch32v20x_rcc.c \
+	Peripheral/src/ch32v20x_pwr.c \
+	Peripheral/src/ch32v20x_rtc.c \
 	Peripheral/src/ch32v20x_usart.c \
 	Peripheral/src/ch32v20x_misc.c
 

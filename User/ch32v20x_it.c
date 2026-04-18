@@ -10,9 +10,11 @@
 * microcontroller manufactured by Nanjing Qinheng Microelectronics.
 *******************************************************************************/
 #include "ch32v20x_it.h"
+#include "CONFIG.h"
 
 void NMI_Handler(void) __attribute__((interrupt("WCH-Interrupt-fast")));
 void HardFault_Handler(void) __attribute__((interrupt("WCH-Interrupt-fast")));
+void BB_IRQHandler(void) __attribute__((interrupt("WCH-Interrupt-fast")));
 
 /*********************************************************************
  * @fn      NMI_Handler
@@ -43,4 +45,8 @@ void HardFault_Handler(void)
   }
 }
 
+void BB_IRQHandler(void)
+{
+  BB_IRQLibHandler();
+}
 
