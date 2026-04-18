@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "ble_att_cache.h"
+#include "ble_link_fsm.h"
 #include "board_caps.h"
 #include "CONFIG.h"
 #include "usb_tx_sched.h"
@@ -54,6 +55,34 @@ static void BleHostMgr_QueueStatusRsp(const vp_hdr_t *hdr, vp_status_t status)
     (void)USBTX_QueueRsp(hdr, status, 0, 0U);
 }
 
+static vp_status_t BleHostMgr_MapBleStatus(bStatus_t ble_status)
+{
+    switch(ble_status)
+    {
+        case SUCCESS:
+            return VP_STATUS_OK;
+
+        case INVALIDPARAMETER:
+            return VP_STATUS_ERR_INVALID_PARAM;
+
+        case bleNotConnected:
+            return VP_STATUS_ERR_BLE_NOT_CONNECTED;
+
+        case blePending:
+            return VP_STATUS_ERR_BUSY;
+
+        case MSG_BUFFER_NOT_AVAIL:
+        case bleMemAllocError:
+            return VP_STATUS_ERR_NO_RESOURCE;
+
+        case bleTimeout:
+            return VP_STATUS_ERR_TIMEOUT;
+
+        default:
+            return VP_STATUS_ERR_BLE_ATT;
+    }
+}
+
 static void BleHostMgr_UpdateState(void)
 {
     uint8_t idx;
@@ -86,7 +115,7 @@ static void BleHostMgr_UpdateState(void)
     }
 }
 
-static int BleHostMgr_FindSlotByHandle(uint16_t conn_handle)
+static int BleHostMgr_FindSlotByConnHandle(uint16_t conn_handle)
 {
     uint8_t idx;
 
@@ -101,14 +130,52 @@ static int BleHostMgr_FindSlotByHandle(uint16_t conn_handle)
     return -1;
 }
 
-static void BleHostMgr_ReportConnState(uint8_t slot, uint16_t conn_handle, uint8_t state, uint16_t status, const uint8_t *addr, uint8_t addr_type)
+static vp_status_t BleHostMgr_ValidateSlotPayload(const uint8_t *payload, uint16_t payload_len, uint8_t *slot)
+{
+    if((payload == 0) || (payload_len < 1U))
+    {
+        return VP_STATUS_ERR_INVALID_PARAM;
+    }
+
+    *slot = payload[0];
+    if(*slot >= APP_BLE_MAX_LINKS)
+    {
+        return VP_STATUS_ERR_BLE_SLOT_INVALID;
+    }
+
+    return VP_STATUS_OK;
+}
+
+static vp_status_t BleHostMgr_ValidateConnectedSlot(const uint8_t *payload, uint16_t payload_len, uint8_t *slot)
+{
+    vp_status_t status = BleHostMgr_ValidateSlotPayload(payload, payload_len, slot);
+
+    if(status != VP_STATUS_OK)
+    {
+        return status;
+    }
+
+    if(g_ble_mgr.slots[*slot].state != BLE_SLOT_STATE_CONNECTED)
+    {
+        return VP_STATUS_ERR_BLE_NOT_CONNECTED;
+    }
+
+    return VP_STATUS_OK;
+}
+
+static void BleHostMgr_ReportConnState(uint8_t slot,
+                                       uint16_t conn_handle,
+                                       uint8_t state,
+                                       uint16_t status,
+                                       const uint8_t *addr,
+                                       uint8_t addr_type)
 {
     uint8_t payload[14];
 
     payload[0] = slot;
     payload[1] = state;
     payload[2] = addr_type;
-    payload[3] = 0U;
+    payload[3] = BleLink_GetState(slot);
     BleHostMgr_WriteLe16(&payload[4], conn_handle);
     BleHostMgr_WriteLe16(&payload[6], status);
     memcpy(&payload[8], addr, B_ADDR_LEN);
@@ -169,6 +236,33 @@ static void BleHostMgr_ReportScanResult(const gapRoleEvent_t *evt)
     (void)USBTX_QueueEvt(VP_CH_BLE_MGMT, 0U, VP_BLE_EVT_SCAN_RSP, payload, sizeof(payload));
 }
 
+static void BleHostMgr_ReportRssiResult(uint8_t slot, uint16_t conn_handle, int8_t rssi)
+{
+    uint8_t payload[4];
+
+    BleHostMgr_WriteLe16(&payload[0], conn_handle);
+    payload[2] = (uint8_t)rssi;
+    payload[3] = 0U;
+
+    (void)USBTX_QueueEvt(VP_CH_BLE_CONN, slot, VP_BLE_EVT_RSSI_RESULT, payload, sizeof(payload));
+}
+
+static void BleHostMgr_ProcessGattMsg(gattMsgEvent_t *msg)
+{
+    int slot;
+
+    if(msg == 0)
+    {
+        return;
+    }
+
+    slot = BleHostMgr_FindSlotByConnHandle(msg->connHandle);
+    if(slot >= 0)
+    {
+        BleLink_HandleGattMsg((uint8_t)slot, msg);
+    }
+}
+
 static void BleHostMgr_EventCb(gapRoleEvent_t *evt)
 {
     if(evt == 0)
@@ -202,6 +296,7 @@ static void BleHostMgr_EventCb(gapRoleEvent_t *evt)
                 g_ble_mgr.slots[slot].state = BLE_SLOT_STATE_CONNECTED;
                 g_ble_mgr.slots[slot].addr_type = evt->linkCmpl.devAddrType;
                 memcpy(g_ble_mgr.slots[slot].addr, evt->linkCmpl.devAddr, B_ADDR_LEN);
+                BleLink_Attach(slot, evt->linkCmpl.connectionHandle);
                 BleHostMgr_ReportConnState(slot,
                                            evt->linkCmpl.connectionHandle,
                                            BLE_SLOT_STATE_CONNECTED,
@@ -212,6 +307,7 @@ static void BleHostMgr_EventCb(gapRoleEvent_t *evt)
             else if(slot < APP_BLE_MAX_LINKS)
             {
                 g_ble_mgr.slots[slot].state = BLE_SLOT_STATE_IDLE;
+                BleLink_Reset(slot);
                 BleHostMgr_ReportConnState(slot,
                                            GAP_CONNHANDLE_INIT,
                                            BLE_SLOT_STATE_IDLE,
@@ -227,11 +323,12 @@ static void BleHostMgr_EventCb(gapRoleEvent_t *evt)
 
         case GAP_LINK_TERMINATED_EVENT:
         {
-            int slot = BleHostMgr_FindSlotByHandle(evt->linkTerminate.connectionHandle);
+            int slot = BleHostMgr_FindSlotByConnHandle(evt->linkTerminate.connectionHandle);
 
             if(slot >= 0)
             {
                 BleAttCache_ResetSlot((uint8_t)slot);
+                BleLink_Reset((uint8_t)slot);
                 BleHostMgr_ReportConnState((uint8_t)slot,
                                            evt->linkTerminate.connectionHandle,
                                            BLE_SLOT_STATE_IDLE,
@@ -254,8 +351,12 @@ static void BleHostMgr_EventCb(gapRoleEvent_t *evt)
 
 static void BleHostMgr_RssiCb(uint16_t conn_handle, int8_t rssi)
 {
-    (void)conn_handle;
-    (void)rssi;
+    int slot = BleHostMgr_FindSlotByConnHandle(conn_handle);
+
+    if(slot >= 0)
+    {
+        BleHostMgr_ReportRssiResult((uint8_t)slot, conn_handle, rssi);
+    }
 }
 
 static void BleHostMgr_MtuCb(uint16_t conn_handle, uint16_t max_tx_octets, uint16_t max_rx_octets)
@@ -275,11 +376,21 @@ static tmosEvents BleHostMgr_ProcessEvent(tmosTaskID task_id, tmosEvents events)
 {
     if((events & SYS_EVENT_MSG) != 0U)
     {
-        uint8_t *msg = tmos_msg_receive(task_id);
+        uint8_t *msg;
 
-        if(msg != 0)
+        while((msg = tmos_msg_receive(task_id)) != 0)
         {
-            tmos_msg_deallocate(msg);
+            tmos_event_hdr_t *hdr = (tmos_event_hdr_t *)msg;
+
+            if(hdr->event == GATT_MSG_EVENT)
+            {
+                gattMsgEvent_t *gatt_msg = (gattMsgEvent_t *)msg;
+
+                BleHostMgr_ProcessGattMsg(gatt_msg);
+                GATT_bm_free(&gatt_msg->msg, gatt_msg->method);
+            }
+
+            (void)tmos_msg_deallocate(msg);
         }
 
         return events ^ SYS_EVENT_MSG;
@@ -309,7 +420,7 @@ static void BleHostMgr_ReplyConnState(const vp_hdr_t *hdr, uint8_t slot)
     payload[0] = slot;
     payload[1] = g_ble_mgr.slots[slot].state;
     payload[2] = g_ble_mgr.slots[slot].addr_type;
-    payload[3] = 0U;
+    payload[3] = BleLink_GetState(slot);
     BleHostMgr_WriteLe16(&payload[4], g_ble_mgr.slots[slot].conn_handle);
     BleHostMgr_WriteLe16(&payload[6], 0U);
     memcpy(&payload[8], g_ble_mgr.slots[slot].addr, B_ADDR_LEN);
@@ -338,6 +449,7 @@ void BleHostMgr_Init(void)
     }
 
     BleAttCache_Init();
+    BleLink_Init(g_ble_mgr.task_id);
     GAPRole_CentralInit();
     GATT_InitClient();
     GATT_RegisterForInd(g_ble_mgr.task_id);
@@ -356,6 +468,7 @@ void BleHostMgr_Init(void)
 void BleHostMgr_HandleMgmt(const vp_hdr_t *hdr, const uint8_t *payload, uint16_t payload_len)
 {
     uint8_t slot;
+    vp_status_t status;
     bStatus_t ble_status;
 
     switch(hdr->opcode)
@@ -436,6 +549,8 @@ void BleHostMgr_HandleMgmt(const vp_hdr_t *hdr, const uint8_t *payload, uint16_t
                 return;
             }
 
+            BleAttCache_ResetSlot(slot);
+            BleLink_Reset(slot);
             g_ble_mgr.pending_connect_slot = slot;
             g_ble_mgr.slots[slot].state = BLE_SLOT_STATE_CONNECTING;
             g_ble_mgr.slots[slot].addr_type = payload[1];
@@ -454,38 +569,179 @@ void BleHostMgr_HandleMgmt(const vp_hdr_t *hdr, const uint8_t *payload, uint16_t
             return;
 
         case VP_BLE_DISCONNECT:
-            if((payload == 0) || (payload_len < 1U))
+            status = BleHostMgr_ValidateConnectedSlot(payload, payload_len, &slot);
+            if(status != VP_STATUS_OK)
             {
-                BleHostMgr_QueueStatusRsp(hdr, VP_STATUS_ERR_INVALID_PARAM);
-                return;
-            }
-
-            slot = payload[0];
-            if((slot >= APP_BLE_MAX_LINKS) || (g_ble_mgr.slots[slot].state != BLE_SLOT_STATE_CONNECTED))
-            {
-                BleHostMgr_QueueStatusRsp(hdr, VP_STATUS_ERR_BLE_NOT_CONNECTED);
+                BleHostMgr_QueueStatusRsp(hdr, status);
                 return;
             }
 
             ble_status = GAPRole_TerminateLink(g_ble_mgr.slots[slot].conn_handle);
-            BleHostMgr_QueueStatusRsp(hdr, (ble_status == SUCCESS) ? VP_STATUS_OK : VP_STATUS_ERR_INVALID_STATE);
+            BleHostMgr_QueueStatusRsp(hdr, BleHostMgr_MapBleStatus(ble_status));
             return;
 
         case VP_BLE_GET_CONN_STATE:
-            if((payload == 0) || (payload_len < 1U))
+            status = BleHostMgr_ValidateSlotPayload(payload, payload_len, &slot);
+            if(status != VP_STATUS_OK)
             {
-                BleHostMgr_QueueStatusRsp(hdr, VP_STATUS_ERR_INVALID_PARAM);
-                return;
-            }
-
-            slot = payload[0];
-            if(slot >= APP_BLE_MAX_LINKS)
-            {
-                BleHostMgr_QueueStatusRsp(hdr, VP_STATUS_ERR_BLE_SLOT_INVALID);
+                BleHostMgr_QueueStatusRsp(hdr, status);
                 return;
             }
 
             BleHostMgr_ReplyConnState(hdr, slot);
+            return;
+
+        case VP_BLE_DISCOVER_SERVICES:
+            status = BleHostMgr_ValidateConnectedSlot(payload, payload_len, &slot);
+            if(status == VP_STATUS_OK)
+            {
+                status = (vp_status_t)BleLink_StartDiscoverServices(slot);
+            }
+            BleHostMgr_QueueStatusRsp(hdr, status);
+            return;
+
+        case VP_BLE_DISCOVER_CHARACTERISTICS:
+            status = BleHostMgr_ValidateConnectedSlot(payload, payload_len, &slot);
+            if((status == VP_STATUS_OK) && (payload_len >= 5U))
+            {
+                status = (vp_status_t)BleLink_StartDiscoverChars(slot,
+                                                                 BleHostMgr_ReadLe16(&payload[1]),
+                                                                 BleHostMgr_ReadLe16(&payload[3]));
+            }
+            else if(status == VP_STATUS_OK)
+            {
+                status = VP_STATUS_ERR_INVALID_PARAM;
+            }
+            BleHostMgr_QueueStatusRsp(hdr, status);
+            return;
+
+        case VP_BLE_DISCOVER_DESCRIPTORS:
+            status = BleHostMgr_ValidateConnectedSlot(payload, payload_len, &slot);
+            if((status == VP_STATUS_OK) && (payload_len >= 5U))
+            {
+                status = (vp_status_t)BleLink_StartDiscoverDescs(slot,
+                                                                 BleHostMgr_ReadLe16(&payload[1]),
+                                                                 BleHostMgr_ReadLe16(&payload[3]));
+            }
+            else if(status == VP_STATUS_OK)
+            {
+                status = VP_STATUS_ERR_INVALID_PARAM;
+            }
+            BleHostMgr_QueueStatusRsp(hdr, status);
+            return;
+
+        case VP_BLE_READ:
+            status = BleHostMgr_ValidateConnectedSlot(payload, payload_len, &slot);
+            if((status == VP_STATUS_OK) && (payload_len >= 3U))
+            {
+                status = (vp_status_t)BleLink_Read(slot, BleHostMgr_ReadLe16(&payload[1]));
+            }
+            else if(status == VP_STATUS_OK)
+            {
+                status = VP_STATUS_ERR_INVALID_PARAM;
+            }
+            BleHostMgr_QueueStatusRsp(hdr, status);
+            return;
+
+        case VP_BLE_WRITE_REQ:
+            status = BleHostMgr_ValidateConnectedSlot(payload, payload_len, &slot);
+            if((status == VP_STATUS_OK) && (payload_len >= 3U))
+            {
+                status = (vp_status_t)BleLink_WriteReq(slot,
+                                                       BleHostMgr_ReadLe16(&payload[1]),
+                                                       &payload[3],
+                                                       (uint16_t)(payload_len - 3U));
+            }
+            else if(status == VP_STATUS_OK)
+            {
+                status = VP_STATUS_ERR_INVALID_PARAM;
+            }
+            BleHostMgr_QueueStatusRsp(hdr, status);
+            return;
+
+        case VP_BLE_WRITE_CMD:
+            status = BleHostMgr_ValidateConnectedSlot(payload, payload_len, &slot);
+            if((status == VP_STATUS_OK) && (payload_len >= 3U))
+            {
+                status = (vp_status_t)BleLink_WriteCmd(slot,
+                                                       BleHostMgr_ReadLe16(&payload[1]),
+                                                       &payload[3],
+                                                       (uint16_t)(payload_len - 3U));
+            }
+            else if(status == VP_STATUS_OK)
+            {
+                status = VP_STATUS_ERR_INVALID_PARAM;
+            }
+            BleHostMgr_QueueStatusRsp(hdr, status);
+            return;
+
+        case VP_BLE_SUBSCRIBE:
+            status = BleHostMgr_ValidateConnectedSlot(payload, payload_len, &slot);
+            if((status == VP_STATUS_OK) && (payload_len >= 3U))
+            {
+                status = (vp_status_t)BleLink_Subscribe(slot, BleHostMgr_ReadLe16(&payload[1]));
+            }
+            else if(status == VP_STATUS_OK)
+            {
+                status = VP_STATUS_ERR_INVALID_PARAM;
+            }
+            BleHostMgr_QueueStatusRsp(hdr, status);
+            return;
+
+        case VP_BLE_UNSUBSCRIBE:
+            status = BleHostMgr_ValidateConnectedSlot(payload, payload_len, &slot);
+            if((status == VP_STATUS_OK) && (payload_len >= 3U))
+            {
+                status = (vp_status_t)BleLink_Unsubscribe(slot, BleHostMgr_ReadLe16(&payload[1]));
+            }
+            else if(status == VP_STATUS_OK)
+            {
+                status = VP_STATUS_ERR_INVALID_PARAM;
+            }
+            BleHostMgr_QueueStatusRsp(hdr, status);
+            return;
+
+        case VP_BLE_EXCHANGE_MTU:
+            status = BleHostMgr_ValidateConnectedSlot(payload, payload_len, &slot);
+            if((status == VP_STATUS_OK) && (payload_len >= 3U))
+            {
+                status = (vp_status_t)BleLink_ExchangeMtu(slot, BleHostMgr_ReadLe16(&payload[1]));
+            }
+            else if(status == VP_STATUS_OK)
+            {
+                status = VP_STATUS_ERR_INVALID_PARAM;
+            }
+            BleHostMgr_QueueStatusRsp(hdr, status);
+            return;
+
+        case VP_BLE_READ_RSSI:
+            status = BleHostMgr_ValidateConnectedSlot(payload, payload_len, &slot);
+            if(status != VP_STATUS_OK)
+            {
+                BleHostMgr_QueueStatusRsp(hdr, status);
+                return;
+            }
+
+            ble_status = GAPRole_ReadRssiCmd(g_ble_mgr.slots[slot].conn_handle);
+            BleHostMgr_QueueStatusRsp(hdr, BleHostMgr_MapBleStatus(ble_status));
+            return;
+
+        case VP_BLE_UPDATE_CONN_PARAM:
+            status = BleHostMgr_ValidateConnectedSlot(payload, payload_len, &slot);
+            if((status == VP_STATUS_OK) && (payload_len >= 9U))
+            {
+                ble_status = GAPRole_UpdateLink(g_ble_mgr.slots[slot].conn_handle,
+                                                BleHostMgr_ReadLe16(&payload[1]),
+                                                BleHostMgr_ReadLe16(&payload[3]),
+                                                BleHostMgr_ReadLe16(&payload[5]),
+                                                BleHostMgr_ReadLe16(&payload[7]));
+                status = BleHostMgr_MapBleStatus(ble_status);
+            }
+            else if(status == VP_STATUS_OK)
+            {
+                status = VP_STATUS_ERR_INVALID_PARAM;
+            }
+            BleHostMgr_QueueStatusRsp(hdr, status);
             return;
 
         default:

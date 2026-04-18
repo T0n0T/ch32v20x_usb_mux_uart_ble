@@ -20,13 +20,13 @@ MEMORY
 
 /* CH32V20x_D8 - CH32V203RB
    CH32V20x_D8W - CH32V208x
-   FLASH + RAM supports the following configuration
-   FLASH-128K + RAM-64K
-   FLASH-144K + RAM-48K
-   FLASH-160K + RAM-32K
+   本工程按 CH32V208 的 32KB 可变映射区切换为 RAM 的模式链接：
+   FLASH = 448K
+   RAM = 64K (32K 固定 RAM + 32K 可变映射 RAM)
+   如需改为更多 FLASH、更少 RAM 的映射模式，需要同步调整这里。
 */
-    FLASH (rx) : ORIGIN = 0x00000000, LENGTH = 160K
-    RAM (xrw) : ORIGIN = 0x20000000, LENGTH = 32K
+    FLASH (rx) : ORIGIN = 0x00000000, LENGTH = 448K
+    RAM (xrw) : ORIGIN = 0x20000000, LENGTH = 64K
 }
 
 SECTIONS
