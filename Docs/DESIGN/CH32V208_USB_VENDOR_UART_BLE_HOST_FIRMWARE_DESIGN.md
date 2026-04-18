@@ -25,8 +25,6 @@
   - 提供 `BLE Central 1 对 3` 连接模型和 TMOS 事件驱动范式
 - `BLE/libwchble.a`
   - 闭源 BLE 库
-- `USB/USB-Driver`
-  - 官方 USB 抽象库
 - `Docs/EXAM/ETH/NetLib`
   - 后续以太网扩展的接口预留参考
 
