@@ -2,6 +2,8 @@
 #include "app_init.h"
 #include "CONFIG.h"
 #include "HAL.h"
+#include "App/usb_mux_dev/usb/usb_rx_fsm.h"
+#include "App/usb_mux_dev/usb/usb_tx_sched.h"
 
 #ifndef BLE_MEMHEAP_SIZE
 #define BLE_MEMHEAP_SIZE 4096U
@@ -20,6 +22,8 @@ int main(void)
 
     while(1)
     {
+        USBRX_Process();
+        USBTX_Process();
         TMOS_SystemProcess();
     }
 }
