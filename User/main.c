@@ -29,6 +29,5 @@ int main (void) {
         GPIO_SetBits (GPIOA, GPIO_Pin_0);
         Delay_Ms (500);
         GPIO_ResetBits (GPIOA, GPIO_Pin_0);
-        printf ("-DEBUG-PR-%08x\r\n", i++);
     }
 }
