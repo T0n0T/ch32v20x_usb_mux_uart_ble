@@ -1,0 +1,6 @@
+*.o
+*.ko
+*.obj
+*.elf
+**/.cache
+**/compile_commands.json

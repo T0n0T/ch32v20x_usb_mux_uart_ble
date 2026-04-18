@@ -1,0 +1,10 @@
+---
+Checks: |
+  clang-analyzer-*,
+  performance-*,
+
+WarningsAsErrors: '*'
+
+HeaderFilterRegex: 'src/.*'
+
+...
