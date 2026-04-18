@@ -6,5 +6,6 @@
 **/compile_commands.json
 
 .codex*
+.worktrees/
 **EXAM
 *.zip
