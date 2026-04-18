@@ -76,4 +76,6 @@ typedef struct __attribute__((packed)) {
 
 #define VP_HEADER_LEN 24U
 
+typedef char vp_hdr_size_must_be_24_bytes[(sizeof(vp_hdr_t) == VP_HEADER_LEN) ? 1 : -1];
+
 #endif
