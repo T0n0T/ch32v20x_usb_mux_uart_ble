@@ -10,6 +10,9 @@ $(OUT_DIR)/$(TARGET).elf: $(OBJS) | $(OUT_DIR)
 $(OUT_DIR)/$(TARGET).hex: $(OUT_DIR)/$(TARGET).elf | $(OUT_DIR)
 	$(OBJCOPY) -O ihex $< $@
 
+$(OUT_DIR)/$(TARGET).openocd.hex: $(OUT_DIR)/$(TARGET).elf | $(OUT_DIR)
+	$(OBJCOPY) -O ihex --change-addresses 0x08000000 $< $@
+
 $(OUT_DIR)/$(TARGET).lst: $(OUT_DIR)/$(TARGET).elf | $(OUT_DIR)
 	$(OBJDUMP) --source --all-headers --demangle -M xw --line-numbers --wide $< > $@
 

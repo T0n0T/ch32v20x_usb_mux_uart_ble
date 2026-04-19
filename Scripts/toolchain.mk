@@ -1,9 +1,21 @@
 TOOLCHAIN_BIN ?= /opt/riscv-wch-toolchain/bin
 TOOLCHAIN_PREFIX ?= $(TOOLCHAIN_BIN)/riscv32-wch-elf-
+PYTHON ?= python3
 OPENOCD_BIN ?= /opt/openocd-wch/bin/
 OPENOCD ?= $(OPENOCD_BIN)/openocd
-OPENOCD_CFG ?= $(OPENOCD_BIN)/wch-riscv.cfg
-OPENOCD_FLASH_CMDS ?= -c "program $(OUT_DIR)/$(TARGET).elf verify reset exit"
+OPENOCD_CFG ?= Scripts/openocd/ch32v208-wch-riscv.cfg
+OPENOCD_FLASH_IMAGE ?= $(OUT_DIR)/$(TARGET).openocd.hex
+OPENOCD_FLASH_CMDS ?= -c "program $(OPENOCD_FLASH_IMAGE) verify reset exit"
+OPENOCD_FLASH_WRAPPER ?= Scripts/openocd_flash.py
+WCH_FLASH_SCRIPT ?= Scripts/wch_flash.py
+WCH_COMM_LIB_DIR ?= Scripts/WCH/CommunicationLib
+WCH_FLASH_CHIP ?= 5
+WCH_FLASH_IFACE ?= 1
+WCH_FLASH_SPEED ?= 3
+WCH_FLASH_OPS_BASE ?= 15
+WCH_FLASH_SDI_PRINT ?= 0
+WCH_FLASH_OPS ?= $(if $(filter 1,$(WCH_FLASH_SDI_PRINT)),31,$(WCH_FLASH_OPS_BASE))
+WCH_FLASH_ADDR ?= 0x08000000
 
 ifeq ($(origin CC), default)
 CC := $(TOOLCHAIN_PREFIX)gcc

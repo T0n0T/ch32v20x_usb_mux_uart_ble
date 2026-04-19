@@ -3,6 +3,7 @@
 *.obj
 *.elf
 *.map
+*.hex
 *.lst
 **/.cache
 **/compile_commands.json

@@ -14,6 +14,8 @@
 
 说明：以下目录和文件职责为实施规划视角的抽象描述；当前仓库的实际构建拆分已落地为 `Scripts/` 和 `Out/`，并在仓库根目录生成 `compile_commands.json` 供编辑器索引使用。
 
+补充说明：本项目按 `CH32V208` 的实际可写 Flash 总量 `448KB`、其中 `128KB` 为快速 Flash、`32KB` 可配置区域可作 Flash 或 RAM、另有 `32KB` 固定 RAM 的约束推进实现。后续智能体在处理链接脚本、烧录布局、内存规划时，应优先遵循该约束，而不是仅依据工具日志中的容量输出做判断。
+
 ### 新建目录
 
 - `App/usb_mux_dev/`
@@ -105,7 +107,7 @@ include Scripts/toolchain.mk
 include Scripts/sources.mk
 include Scripts/rules.mk
 
-.PHONY: all clean size list compile_commands
+.PHONY: all clean size list compile_commands flash flash-sdi flash-openocd flatten-wch-lib
 
 all: compile_commands.json $(OUT_DIR)/$(TARGET).elf $(OUT_DIR)/$(TARGET).hex $(OUT_DIR)/$(TARGET).lst
 compile_commands: compile_commands.json
@@ -115,8 +117,14 @@ size: $(OUT_DIR)/$(TARGET).elf
 	$(SIZE) --format=berkeley $<
 list: $(OUT_DIR)/$(TARGET).elf
 	$(OBJDUMP) --source --all-headers --demangle -M xw --line-numbers --wide $< > $(OUT_DIR)/$(TARGET).lst
-flash: $(OUT_DIR)/$(TARGET).elf
-	$(OPENOCD) -f "$(OPENOCD_CFG)" $(OPENOCD_FLASH_CMDS)
+flash: $(OUT_DIR)/$(TARGET).hex
+	$(PYTHON) "$(WCH_FLASH_SCRIPT)" --file "$<" --chip "$(WCH_FLASH_CHIP)" --iface "$(WCH_FLASH_IFACE)" --speed "$(WCH_FLASH_SPEED)" --ops "$(WCH_FLASH_OPS)" --address "$(WCH_FLASH_ADDR)" --comm-lib-dir "$(WCH_COMM_LIB_DIR)"
+flash-sdi: WCH_FLASH_SDI_PRINT=1
+flash-sdi: flash
+flash-openocd: $(OUT_DIR)/$(TARGET).openocd.hex
+	$(PYTHON) "$(OPENOCD_FLASH_WRAPPER)" --image "$<" --openocd "$(OPENOCD)" --config "$(OPENOCD_CFG)" --command "program $(OPENOCD_FLASH_IMAGE) verify reset exit"
+flatten-wch-lib:
+	$(PYTHON) Scripts/flatten_wch_comm_lib.py "$(WCH_COMM_LIB_DIR)"
 ```
 
 - [ ] **Step 2: 写入工具链和源码清单**
@@ -208,7 +216,10 @@ Expected:
 - 成功生成 `Out/ch32v208_usb_mux_ble_host.hex`
 - 成功生成 `Out/ch32v208_usb_mux_ble_host.lst`
 - 成功生成 `Out/ch32v208_usb_mux_ble_host.map`
-- 执行 `make flash` 时可调用 WCH OpenOCD 完成烧录、校验与复位
+- 执行 `make flash` 时可通过仓库内 `Scripts/WCH/CommunicationLib/libmcuupdate.so` 完成烧录、校验与复位
+- 如需同时打开 `SDI print`，可执行 `make flash-sdi`
+- 如需复现或继续定位 OpenOCD 识别问题，可执行 `make flash-openocd`；若镜像地址触及 `0x08028000` 以上，该命令应直接失败并提示当前 `wch_riscv` 驱动能力不足
+- 如需将仓库内 `CommunicationLib` 压平成单层普通文件目录，可执行 `make flatten-wch-lib`
 
 - [ ] **Step 6: MCU 启动验证**
 

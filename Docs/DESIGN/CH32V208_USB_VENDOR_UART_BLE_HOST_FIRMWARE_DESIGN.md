@@ -28,6 +28,14 @@
 - `Docs/EXAM/ETH/NetLib`
   - 后续以太网扩展的接口预留参考
 
+## 2.1 CH32V208 存储映射说明
+
+- 本项目按 `CH32V208` 的实际可写 Flash 总量 `448KB` 进行设计。
+- 其中 `128KB` 为快速 Flash 区。
+- 另有 `32KB` 可配置区域，可配置为 Flash 或 RAM。
+- 另有 `32KB` 固定 RAM 区。
+- 涉及链接脚本、烧录布局、内存规划时，应以本项目约定和芯片手册为准，不应仅依据调试或烧录工具输出的 `flash size`、`ROM`、`RAM` 日志直接下结论。
+
 ## 3. 需求边界
 
 ### 3.1 功能目标
@@ -689,8 +697,17 @@ typedef struct {
 - `make size`
 - `make list`
 - `make flash`
+- `make flash-sdi`
+- `make flash-openocd`
+- `make flatten-wch-lib`
 
-`make flash` 默认使用 WCH OpenOCD 与 `wch-riscv.cfg` 烧录 `$(OUT_DIR)/$(TARGET).elf`，并执行 `program ... verify reset exit`。如本机工具路径不同，允许通过 `OPENOCD`、`OPENOCD_CFG` 和 `OPENOCD_FLASH_CMDS` 覆盖。
+`make flash` 默认使用项目内 `Scripts/wch_flash.py` 调用仓库内 `Scripts/WCH/CommunicationLib/libmcuupdate.so` 烧录 `$(OUT_DIR)/$(TARGET).hex`，默认地址为 `0x08000000`。
+
+`make flash-sdi` 在默认擦除、下载、校验、复位的基础上额外打开 `SDI print` 使能位。
+
+`make flash-openocd` 使用仓库内 `Scripts/openocd/ch32v208-wch-riscv.cfg` 与重定位到 `0x08000000` 的 `$(OUT_DIR)/$(TARGET).openocd.hex`。当前实测中，该链路仍会把目标错误识别为 `flash size = 160kbytes`，并在镜像使用 `0x08028000` 以上地址时报 `no flash bank found`。因此该目标仅保留为诊断入口，不应作为本项目当前对 `CH32V208` 的默认烧录方案。
+
+`make flatten-wch-lib` 用于将仓库内 `Scripts/WCH/CommunicationLib` 中的符号链接压平成普通文件，便于打包或跨文件系统复制。
 
 ## 12.4 构建要求
 

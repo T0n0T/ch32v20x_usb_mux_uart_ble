@@ -5,7 +5,7 @@ include Scripts/sources.mk
 include Scripts/toolchain.mk
 include Scripts/rules.mk
 
-.PHONY: all clean size list compile_commands flash
+.PHONY: all clean size list compile_commands flash flash-sdi flash-openocd flatten-wch-lib
 
 all: compile_commands.json $(OUT_DIR)/$(TARGET).elf $(OUT_DIR)/$(TARGET).hex $(OUT_DIR)/$(TARGET).lst
 
@@ -20,5 +20,14 @@ size: $(OUT_DIR)/$(TARGET).elf
 list: $(OUT_DIR)/$(TARGET).elf
 	$(OBJDUMP) --source --all-headers --demangle -M xw --line-numbers --wide $< > $(OUT_DIR)/$(TARGET).lst
 
-flash: $(OUT_DIR)/$(TARGET).elf
-	$(OPENOCD) -f "$(OPENOCD_CFG)" $(OPENOCD_FLASH_CMDS)
+flash: $(OUT_DIR)/$(TARGET).hex
+	$(PYTHON) "$(WCH_FLASH_SCRIPT)" --file "$<" --chip "$(WCH_FLASH_CHIP)" --iface "$(WCH_FLASH_IFACE)" --speed "$(WCH_FLASH_SPEED)" --ops "$(WCH_FLASH_OPS)" --address "$(WCH_FLASH_ADDR)" --comm-lib-dir "$(WCH_COMM_LIB_DIR)"
+
+flash-sdi: WCH_FLASH_SDI_PRINT=1
+flash-sdi: flash
+
+flash-openocd: $(OUT_DIR)/$(TARGET).openocd.hex
+	$(PYTHON) "$(OPENOCD_FLASH_WRAPPER)" --image "$<" --openocd "$(OPENOCD)" --config "$(OPENOCD_CFG)" --command "program $(OPENOCD_FLASH_IMAGE) verify reset exit"
+
+flatten-wch-lib:
+	$(PYTHON) Scripts/flatten_wch_comm_lib.py "$(WCH_COMM_LIB_DIR)"
