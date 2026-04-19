@@ -24,4 +24,36 @@ $(OUT_DIR)/obj/%.o: %.S
 $(OUT_DIR):
 	@mkdir -p $@
 
+compile_commands.json: Scripts/rules.mk Scripts/sources.mk Scripts/toolchain.mk Makefile
+	@{ \
+		json_escape() { \
+			printf '%s' "$$1" | sed 's/\\/\\\\/g; s/"/\\"/g'; \
+		}; \
+		first=1; \
+		printf '[\n' > $@; \
+		for src in $(C_SRCS); do \
+			out="$(OUT_DIR)/obj/$${src%.c}.o"; \
+			cmd='$(CC) $(CFLAGS) -MMD -MP -c '"$$src"' -o '"$$out"; \
+			[ $$first -eq 1 ] || printf ',\n' >> $@; \
+			first=0; \
+			printf '  {"directory":"%s","file":"%s","output":"%s","command":"%s"}' \
+				"$$(json_escape "$(CURDIR)")" \
+				"$$(json_escape "$$src")" \
+				"$$(json_escape "$$out")" \
+				"$$(json_escape "$$cmd")" >> $@; \
+		done; \
+		for src in $(ASM_SRCS); do \
+			out="$(OUT_DIR)/obj/$${src%.S}.o"; \
+			cmd='$(AS) $(ASFLAGS) -MMD -MP -c '"$$src"' -o '"$$out"; \
+			[ $$first -eq 1 ] || printf ',\n' >> $@; \
+			first=0; \
+			printf '  {"directory":"%s","file":"%s","output":"%s","command":"%s"}' \
+				"$$(json_escape "$(CURDIR)")" \
+				"$$(json_escape "$$src")" \
+				"$$(json_escape "$$out")" \
+				"$$(json_escape "$$cmd")" >> $@; \
+		done; \
+		printf '\n]\n' >> $@; \
+	}
+
 -include $(DEPS)

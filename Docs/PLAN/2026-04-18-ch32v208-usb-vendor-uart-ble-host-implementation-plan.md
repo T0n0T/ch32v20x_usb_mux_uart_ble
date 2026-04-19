@@ -12,6 +12,8 @@
 
 ## 文件结构
 
+说明：以下目录和文件职责为实施规划视角的抽象描述；当前仓库的实际构建拆分已落地为 `Scripts/` 和 `Out/`，并在仓库根目录生成 `compile_commands.json` 供编辑器索引使用。
+
 ### 新建目录
 
 - `App/usb_mux_dev/`
@@ -23,20 +25,22 @@
 - `App/usb_mux_dev/uart/`
 - `App/usb_mux_dev/ble/`
 - `App/usb_mux_dev/net/`
-- `mk/`
-- `build/`
-- `out/`
+- `Scripts/`
+- `Out/`
+- `compile_commands.json`
 
 ### 计划中的核心文件职责
 
 - `Makefile`
   - 顶层构建入口，定义目标、目录和默认规则
-- `mk/toolchain.mk`
+- `Scripts/toolchain.mk`
   - 工具链、公共编译参数、链接参数
-- `mk/sources.mk`
+- `Scripts/sources.mk`
   - 应用层和仓库内库源码列表
-- `mk/rules.mk`
+- `Scripts/rules.mk`
   - 通用编译和链接规则
+- `compile_commands.json`
+  - 自动生成的编译数据库，供 `clangd`、`clang-tidy` 和编辑器代码索引使用
 - `App/usb_mux_dev/main.c`
   - 固件主入口，初始化顺序和主循环
 - `App/usb_mux_dev/include/app_init.h`
@@ -95,28 +99,30 @@
 
 ```make
 TARGET := ch32v208_usb_mux_ble_host
-BUILD_DIR := build
-OUT_DIR := out
+OUT_DIR := Out
 
-include mk/toolchain.mk
-include mk/sources.mk
-include mk/rules.mk
+include Scripts/toolchain.mk
+include Scripts/sources.mk
+include Scripts/rules.mk
 
-.PHONY: all clean size list
+.PHONY: all clean size list compile_commands
 
-all: $(OUT_DIR)/$(TARGET).elf $(OUT_DIR)/$(TARGET).hex $(OUT_DIR)/$(TARGET).lst
+all: compile_commands.json $(OUT_DIR)/$(TARGET).elf $(OUT_DIR)/$(TARGET).hex $(OUT_DIR)/$(TARGET).lst
+compile_commands: compile_commands.json
 clean:
-	rm -rf $(BUILD_DIR) $(OUT_DIR)
+	rm -rf $(OUT_DIR) compile_commands.json
 size: $(OUT_DIR)/$(TARGET).elf
 	$(SIZE) --format=berkeley $<
 list: $(OUT_DIR)/$(TARGET).elf
 	$(OBJDUMP) --source --all-headers --demangle -M xw --line-numbers --wide $< > $(OUT_DIR)/$(TARGET).lst
+flash: $(OUT_DIR)/$(TARGET).elf
+	$(OPENOCD) -f "$(OPENOCD_CFG)" $(OPENOCD_FLASH_CMDS)
 ```
 
 - [ ] **Step 2: 写入工具链和源码清单**
 
 ```make
-# mk/toolchain.mk
+# Scripts/toolchain.mk
 CC := riscv-none-embed-gcc
 AS := riscv-none-embed-gcc
 OBJCOPY := riscv-none-embed-objcopy
@@ -130,7 +136,7 @@ LIBS := BLE/libwchble.a
 ```
 
 ```make
-# mk/sources.mk
+# Scripts/sources.mk
 APP_SRCS := \
 	App/usb_mux_dev/main.c \
 	App/usb_mux_dev/app_init.c
@@ -197,10 +203,12 @@ ENTRY(Reset_Handler)
 Run: `make clean && make all`
 
 Expected:
-- 成功生成 `out/ch32v208_usb_mux_ble_host.elf`
-- 成功生成 `out/ch32v208_usb_mux_ble_host.hex`
-- 成功生成 `out/ch32v208_usb_mux_ble_host.lst`
-- 成功生成 `out/ch32v208_usb_mux_ble_host.map`
+- 成功生成 `compile_commands.json`
+- 成功生成 `Out/ch32v208_usb_mux_ble_host.elf`
+- 成功生成 `Out/ch32v208_usb_mux_ble_host.hex`
+- 成功生成 `Out/ch32v208_usb_mux_ble_host.lst`
+- 成功生成 `Out/ch32v208_usb_mux_ble_host.map`
+- 执行 `make flash` 时可调用 WCH OpenOCD 完成烧录、校验与复位
 
 - [ ] **Step 6: MCU 启动验证**
 

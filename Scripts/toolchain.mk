@@ -1,5 +1,9 @@
-TOOLCHAIN_BIN ?= /usr/share/MRS2/MRS-linux-x64/resources/app/resources/linux/components/WCH/Toolchain/RISC-V\ Embedded\ GCC15/bin
+TOOLCHAIN_BIN ?= /opt/riscv-wch-toolchain/bin
 TOOLCHAIN_PREFIX ?= $(TOOLCHAIN_BIN)/riscv32-wch-elf-
+OPENOCD_BIN ?= /opt/openocd-wch/bin/
+OPENOCD ?= $(OPENOCD_BIN)/openocd
+OPENOCD_CFG ?= $(OPENOCD_BIN)/wch-riscv.cfg
+OPENOCD_FLASH_CMDS ?= -c "program $(OUT_DIR)/$(TARGET).elf verify reset exit"
 
 ifeq ($(origin CC), default)
 CC := $(TOOLCHAIN_PREFIX)gcc
@@ -41,4 +45,3 @@ ARCH_FLAGS := -march=rv32imacxw -mabi=ilp32 -mcmodel=medany -msmall-data-limit=8
 CFLAGS := $(ARCH_FLAGS) -Os -g -ffunction-sections -fdata-sections -fno-common -Wall -Wextra $(INCLUDES)
 ASFLAGS := $(ARCH_FLAGS) -x assembler-with-cpp $(INCLUDES)
 LDFLAGS := $(ARCH_FLAGS) -T Ld/Link.ld -nostartfiles -Wl,--gc-sections -Wl,--print-memory-usage -Wl,-Map,$(OUT_DIR)/$(TARGET).map --specs=nano.specs --specs=nosys.specs
-

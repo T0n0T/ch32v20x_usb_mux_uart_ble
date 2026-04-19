@@ -674,37 +674,37 @@ typedef struct {
 ## 12.2 推荐目录
 
 - `Makefile`
-- `mk/toolchain.mk`
-- `mk/sources.mk`
-- `mk/ble.mk`
-- `mk/usb.mk`
-- `mk/periph.mk`
-- `mk/rules.mk`
-- `build/`
-- `out/`
+- `Scripts/toolchain.mk`
+- `Scripts/sources.mk`
+- `Scripts/rules.mk`
+- `Out/`
+- `compile_commands.json`
 
 ## 12.3 推荐目标
 
 - `make`
 - `make all`
 - `make clean`
+- `make compile_commands`
 - `make size`
 - `make list`
 - `make flash`
+
+`make flash` 默认使用 WCH OpenOCD 与 `wch-riscv.cfg` 烧录 `$(OUT_DIR)/$(TARGET).elf`，并执行 `program ... verify reset exit`。如本机工具路径不同，允许通过 `OPENOCD`、`OPENOCD_CFG` 和 `OPENOCD_FLASH_CMDS` 覆盖。
 
 ## 12.4 构建要求
 
 - 不依赖 IDE 自动生成 `sources.mk`
 - 源文件列表手工维护
 - 自动生成 `.d` 依赖文件
+- 自动生成根目录 `compile_commands.json`，供 `clangd`、`clang-tidy` 和编辑器索引使用
 - 链接脚本使用仓库内固定路径
 - 使用统一工具链配置文件管理编译参数
 
 ## 12.5 构建变量建议
 
 - `TARGET := ch32v208_usb_mux_ble_host`
-- `BUILD_DIR := build`
-- `OUT_DIR := out`
+- `OUT_DIR := Out`
 - `LINKER_SCRIPT := Ld/Link.ld`
 - `BLE_LIB := BLE/libwchble.a`
 
