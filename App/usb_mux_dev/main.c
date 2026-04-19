@@ -1,7 +1,7 @@
 #include "debug.h"
 #include "app_init.h"
-#include "CONFIG.h"
-#include "HAL.h"
+#include "config.h"
+#include "heartbeat.h"
 #include "App/usb_mux_dev/usb/usb_rx_fsm.h"
 #include "App/usb_mux_dev/usb/usb_tx_sched.h"
 #include "App/usb_mux_dev/uart/uart_manager.h"
@@ -25,6 +25,7 @@ int main(void)
 
     while(1)
     {
+        Heartbeat_Process();
         USBRX_Process();
         UartMgr_Process();
         USBTX_Process();

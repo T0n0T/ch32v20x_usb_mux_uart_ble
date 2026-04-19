@@ -2,8 +2,9 @@
 
 #include <string.h>
 
-#include "CONFIG.h"
-#include "HAL.h"
+#include "config.h"
+#include "hal.h"
+#include "heartbeat.h"
 
 tmosTaskID halTaskID = INVALID_TASK_ID;
 uint32_t g_LLE_IRQLibHandlerLocation;
@@ -119,6 +120,7 @@ void APP_Init(void)
 {
     WCHBLE_Init();
     HAL_Init();
+    Heartbeat_Init();
     BleHostMgr_Init();
     USBRX_Init();
     USBTX_Init();

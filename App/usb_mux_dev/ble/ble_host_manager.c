@@ -5,7 +5,7 @@
 #include "ble_att_cache.h"
 #include "ble_link_fsm.h"
 #include "board_caps.h"
-#include "CONFIG.h"
+#include "config.h"
 #include "usb_tx_sched.h"
 
 #define BLE_SLOT_STATE_IDLE        0U

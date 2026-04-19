@@ -1,0 +1,7 @@
+CompileFlags:
+  Remove:
+    - -march=rv32imacxw
+    - -mno-save-restore
+  Add:
+    - --target=riscv32-unknown-elf
+    - -march=rv32imac

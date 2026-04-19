@@ -167,8 +167,8 @@ PERIPH_SRCS := \
 // App/usb_mux_dev/main.c
 #include "debug.h"
 #include "app_init.h"
-#include "CONFIG.h"
-#include "HAL.h"
+#include "config.h"
+#include "hal.h"
 
 __attribute__((aligned(4))) uint32_t MEM_BUF[BLE_MEMHEAP_SIZE / 4];
 

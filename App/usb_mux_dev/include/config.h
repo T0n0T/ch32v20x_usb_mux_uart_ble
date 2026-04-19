@@ -4,6 +4,8 @@
 #include "wchble.h"
 #include "ch32v20x.h"
 #include "ch32v20x_flash.h"
+#include "ch32v20x_gpio.h"
+#include "ch32v20x_rcc.h"
 #include "ch32v20x_rtc.h"
 
 #define CHIP_ID                   0x0208
@@ -22,6 +24,12 @@
 #define PERIPHERAL_MAX_CONNECTION 0U
 #define CENTRAL_MAX_CONNECTION    3U
 #define APP_ENABLE_DEBUG_UART     FALSE
+#define APP_HEARTBEAT_ENABLE      1U
+#define APP_HEARTBEAT_GPIO        GPIOA
+#define APP_HEARTBEAT_GPIO_CLOCK  RCC_APB2Periph_GPIOA
+#define APP_HEARTBEAT_PIN         GPIO_Pin_0
+#define APP_HEARTBEAT_ACTIVE_LOW  1U
+#define APP_HEARTBEAT_PERIOD_MS   500U
 
 extern uint32_t MEM_BUF[BLE_MEMHEAP_SIZE / 4U];
 

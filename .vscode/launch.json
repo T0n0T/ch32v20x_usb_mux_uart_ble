@@ -22,15 +22,24 @@
             "cwd": "${workspaceRoot}",
             "executable": "Out/ch32v208_usb_mux_ble_host.elf",
             "name": "Debug with OpenOCD",
-            "request": "launch",
+            "request": "attach",
             "type": "cortex-debug",
             "gdbPath": "gdb-multiarch",
+            "objdumpPath": "/opt/riscv-wch-toolchain/bin/riscv32-wch-elf-objdump",
+            "toolchainPrefix": "riscv32-wch-elf",
             "serverpath": "/opt/openocd-wch/bin/openocd",
             "servertype": "openocd",
             "svdPath": "Ld/CH32V208xx.svd",
             "configFiles": ["Scripts/openocd/ch32v208-wch-riscv.cfg"],
             "searchDir": [],
-            "runToEntryPoint": "main",
+            "breakAfterReset": true,
+            "postAttachCommands": [
+                "monitor reset halt"
+            ],
+            "postRestartCommands": [
+                "thbreak main",
+                "continue"
+            ],
             "showDevDebugOutput": "none"
         }
     ]

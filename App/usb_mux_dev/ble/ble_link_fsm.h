@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#include "CONFIG.h"
+#include "config.h"
 
 typedef enum {
     BLE_L_IDLE = 0,
