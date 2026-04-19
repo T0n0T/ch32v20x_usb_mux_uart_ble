@@ -7,13 +7,13 @@
         {
             "type": "by-gdb",
             "request": "launch",
-            "name": "Debug with GDB",
+            "name": "Debug with GDB Remote",
             "program": "Out/ch32v208_usb_mux_ble_host.elf",
             "cwd": "${workspaceRoot}",
-            "debuggerPath": "/opt/riscv-wch-toolchain/bin/riscv32-wch-elf-gdb",
+            "debuggerPath": "gdb-multiarch",
             "remote": {
                 "enabled": true,
-                "address": ":2345",
+                "address": ":3333",
                 "mode": "remote",
                 "execfile": "${fileBasenameNoExtension}"
             }
@@ -24,11 +24,11 @@
             "name": "Debug with OpenOCD",
             "request": "launch",
             "type": "cortex-debug",
-            "gdbPath": "/opt/riscv-wch-toolchain/bin/riscv32-wch-elf-gdb",
+            "gdbPath": "gdb-multiarch",
             "serverpath": "/opt/openocd-wch/bin/openocd",
             "servertype": "openocd",
             "svdPath": "Ld/CH32V208xx.svd",
-            "configFiles": ["/opt/openocd-wch/bin/wch-riscv.cfg"],
+            "configFiles": ["Scripts/openocd/ch32v208-wch-riscv.cfg"],
             "searchDir": [],
             "runToEntryPoint": "main",
             "showDevDebugOutput": "none"

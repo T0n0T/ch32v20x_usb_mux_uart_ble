@@ -5,7 +5,7 @@ include Scripts/sources.mk
 include Scripts/toolchain.mk
 include Scripts/rules.mk
 
-.PHONY: all clean size list compile_commands flash flash-sdi flash-openocd flatten-wch-lib
+.PHONY: all clean size list compile_commands flash flash-sdi flash-openocd flatten-wch-lib debug-openocd debug-gdb
 
 all: compile_commands.json $(OUT_DIR)/$(TARGET).elf $(OUT_DIR)/$(TARGET).hex $(OUT_DIR)/$(TARGET).lst
 
@@ -31,3 +31,13 @@ flash-openocd: $(OUT_DIR)/$(TARGET).openocd.hex
 
 flatten-wch-lib:
 	$(PYTHON) Scripts/flatten_wch_comm_lib.py "$(WCH_COMM_LIB_DIR)"
+
+debug-openocd:
+	$(OPENOCD) -f "$(OPENOCD_CFG)"
+
+debug-gdb: $(OUT_DIR)/$(TARGET).elf
+	$(GDB) -q "$<" \
+		-ex "set architecture riscv:rv32" \
+		-ex "target remote $(GDB_REMOTE)" \
+		-ex "monitor reset halt" \
+		-ex "thbreak main"
