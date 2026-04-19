@@ -33,11 +33,6 @@ typedef struct {
 
 static uart_port_ctx_t g_uart_ports[APP_UART_PORT_COUNT];
 
-static uint16_t UartMgr_ReadLe16(const uint8_t *src)
-{
-    return (uint16_t)((uint16_t)src[0] | ((uint16_t)src[1] << 8));
-}
-
 static uint32_t UartMgr_ReadLe32(const uint8_t *src)
 {
     return (uint32_t)src[0]

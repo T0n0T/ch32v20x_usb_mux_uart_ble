@@ -7,40 +7,17 @@
         {
             "type": "by-gdb",
             "request": "launch",
-            "name": "Debug with GDB Remote",
-            "program": "Out/ch32v208_usb_mux_ble_host.elf",
+            "name": "Launch(remote)",
+            "program": "Out/ch32v208_usb_mux_ble_host.elf",            
             "cwd": "${workspaceRoot}",
-            "debuggerPath": "gdb-multiarch",
-            "remote": {
+            "debuggerPath": "/opt/riscv-wch-toolchain/bin/riscv-none-embed-gdb",
+            "stopAtEntry": true,
+            "remote": {            
                 "enabled": true,
                 "address": ":3333",
-                "mode": "remote",
-                "execfile": "${fileBasenameNoExtension}"
+                "mode": "remote",            
+                "execfile": "Out/ch32v208_usb_mux_ble_host.elf"
             }
-        },
-        {
-            "cwd": "${workspaceRoot}",
-            "executable": "Out/ch32v208_usb_mux_ble_host.elf",
-            "name": "Debug with OpenOCD",
-            "request": "attach",
-            "type": "cortex-debug",
-            "gdbPath": "gdb-multiarch",
-            "objdumpPath": "/opt/riscv-wch-toolchain/bin/riscv32-wch-elf-objdump",
-            "toolchainPrefix": "riscv32-wch-elf",
-            "serverpath": "/opt/openocd-wch/bin/openocd",
-            "servertype": "openocd",
-            "svdPath": "Ld/CH32V208xx.svd",
-            "configFiles": ["Scripts/openocd/ch32v208-wch-riscv.cfg"],
-            "searchDir": [],
-            "breakAfterReset": true,
-            "postAttachCommands": [
-                "monitor reset halt"
-            ],
-            "postRestartCommands": [
-                "thbreak main",
-                "continue"
-            ],
-            "showDevDebugOutput": "none"
         }
     ]
 }

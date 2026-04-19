@@ -1,6 +1,7 @@
 *.o
 *.d
-*.obj
+*obj
+*.mrs
 *.elf
 *.map
 *.hex

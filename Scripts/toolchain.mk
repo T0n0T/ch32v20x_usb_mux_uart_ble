@@ -1,5 +1,5 @@
 TOOLCHAIN_BIN ?= /opt/riscv-wch-toolchain/bin
-TOOLCHAIN_PREFIX ?= $(TOOLCHAIN_BIN)/riscv32-wch-elf-
+TOOLCHAIN_PREFIX ?= $(TOOLCHAIN_BIN)/riscv-none-embed-
 PYTHON ?= python3
 OPENOCD_BIN ?= /opt/openocd-wch/bin/
 OPENOCD ?= $(OPENOCD_BIN)/openocd
