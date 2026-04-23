@@ -4,6 +4,7 @@
 
 #include "../config/board_caps.h"
 #include "../ble/ble_host_manager.h"
+#include "../include/app_log.h"
 #include "../uart/uart_manager.h"
 #include "../usb/usb_tx_sched.h"
 
@@ -49,8 +50,16 @@ void VendorRouter_Dispatch(const vp_hdr_t *hdr, const uint8_t *payload, uint16_t
 {
     if(hdr == 0)
     {
+        APP_LOG_USB("router hdr null");
         return;
     }
+
+    APP_LOG_USB("router ch=0x%02X id=%u msg=0x%02X op=0x%02X len=%u",
+                hdr->ch_type,
+                hdr->ch_id,
+                hdr->msg_type,
+                hdr->opcode,
+                payload_len);
 
     if(hdr->ch_type == VP_CH_UART_CTRL)
     {

@@ -1,9 +1,9 @@
-TOOLCHAIN_BIN ?= /opt/riscv-wch-toolchain/bin
+TOOLCHAIN_BIN ?= /opt/risc-wch-gcc/bin
 TOOLCHAIN_PREFIX ?= $(TOOLCHAIN_BIN)/riscv-none-embed-
 PYTHON ?= python3
-OPENOCD_BIN ?= /opt/openocd-wch/bin/
+OPENOCD_BIN ?= /usr/share/MRS2/MRS-linux-x64/resources/app/resources/linux/components/WCH/OpenOCD/OpenOCD/bin/
 OPENOCD ?= $(OPENOCD_BIN)/openocd
-OPENOCD_CFG ?= Scripts/openocd/ch32v208-wch-riscv.cfg
+OPENOCD_CFG ?= $(OPENOCD_BIN)/wch-riscv.cfg
 GDB ?= gdb-multiarch
 GDB_REMOTE ?= :3333
 OPENOCD_FLASH_IMAGE ?= $(OUT_DIR)/$(TARGET).openocd.hex
@@ -13,11 +13,12 @@ WCH_FLASH_SCRIPT ?= Scripts/wch_flash.py
 WCH_COMM_LIB_DIR ?= Scripts/WCH/CommunicationLib
 WCH_FLASH_CHIP ?= 5
 WCH_FLASH_IFACE ?= 1
-WCH_FLASH_SPEED ?= 3
+WCH_FLASH_SPEED ?= 1
 WCH_FLASH_OPS_BASE ?= 15
 WCH_FLASH_SDI_PRINT ?= 0
 WCH_FLASH_OPS ?= $(if $(filter 1,$(WCH_FLASH_SDI_PRINT)),31,$(WCH_FLASH_OPS_BASE))
 WCH_FLASH_ADDR ?= 0x08000000
+APP_BUILD_INFO ?= $(OUT_DIR)/generate/app_build_info.h
 
 ifeq ($(origin CC), default)
 CC := $(TOOLCHAIN_PREFIX)gcc

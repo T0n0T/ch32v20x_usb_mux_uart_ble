@@ -5,6 +5,7 @@
 #include "ble_att_cache.h"
 #include "ble_link_fsm.h"
 #include "board_caps.h"
+#include "app_log.h"
 #include "config.h"
 #include "usb_tx_sched.h"
 
@@ -52,6 +53,13 @@ static uint16_t BleHostMgr_ReadLe16(const uint8_t *src)
 
 static void BleHostMgr_QueueStatusRsp(const vp_hdr_t *hdr, vp_status_t status)
 {
+    if(hdr != 0)
+    {
+        APP_LOG_BLE("rsp opcode=0x%02X seq=%u status=0x%04X",
+                    hdr->opcode,
+                    hdr->seq,
+                    (uint16_t)status);
+    }
     (void)USBTX_QueueRsp(hdr, status, 0, 0U);
 }
 
@@ -274,6 +282,7 @@ static void BleHostMgr_EventCb(gapRoleEvent_t *evt)
     {
         case GAP_DEVICE_INIT_DONE_EVENT:
             g_ble_mgr.state = BLE_G_READY;
+            APP_LOG_BLE("device init done");
             break;
 
         case GAP_DEVICE_INFO_EVENT:
@@ -284,6 +293,7 @@ static void BleHostMgr_EventCb(gapRoleEvent_t *evt)
         case GAP_DEVICE_DISCOVERY_EVENT:
             g_ble_mgr.active_scan = 0U;
             BleHostMgr_UpdateState();
+            APP_LOG_BLE("scan complete state=%u", g_ble_mgr.state);
             break;
 
         case GAP_LINK_ESTABLISHED_EVENT:
@@ -303,6 +313,10 @@ static void BleHostMgr_EventCb(gapRoleEvent_t *evt)
                                            evt->gap.hdr.status,
                                            evt->linkCmpl.devAddr,
                                            evt->linkCmpl.devAddrType);
+                APP_LOG_BLE("connect ok slot=%u handle=0x%04X type=%u",
+                            slot,
+                            evt->linkCmpl.connectionHandle,
+                            evt->linkCmpl.devAddrType);
             }
             else if(slot < APP_BLE_MAX_LINKS)
             {
@@ -314,6 +328,9 @@ static void BleHostMgr_EventCb(gapRoleEvent_t *evt)
                                            evt->gap.hdr.status,
                                            g_ble_mgr.slots[slot].addr,
                                            g_ble_mgr.slots[slot].addr_type);
+                APP_LOG_BLE("connect fail slot=%u status=0x%02X",
+                            slot,
+                            evt->gap.hdr.status);
             }
 
             g_ble_mgr.pending_connect_slot = 0xFFU;
@@ -327,6 +344,10 @@ static void BleHostMgr_EventCb(gapRoleEvent_t *evt)
 
             if(slot >= 0)
             {
+                APP_LOG_BLE("disconnect slot=%d handle=0x%04X reason=0x%02X",
+                            slot,
+                            evt->linkTerminate.connectionHandle,
+                            evt->linkTerminate.reason);
                 BleAttCache_ResetSlot((uint8_t)slot);
                 BleLink_Reset((uint8_t)slot);
                 BleHostMgr_ReportConnState((uint8_t)slot,
@@ -355,15 +376,20 @@ static void BleHostMgr_RssiCb(uint16_t conn_handle, int8_t rssi)
 
     if(slot >= 0)
     {
+        APP_LOG_BLE("rssi slot=%d handle=0x%04X rssi=%d",
+                    slot,
+                    conn_handle,
+                    rssi);
         BleHostMgr_ReportRssiResult((uint8_t)slot, conn_handle, rssi);
     }
 }
 
 static void BleHostMgr_MtuCb(uint16_t conn_handle, uint16_t max_tx_octets, uint16_t max_rx_octets)
 {
-    (void)conn_handle;
-    (void)max_tx_octets;
-    (void)max_rx_octets;
+    APP_LOG_BLE("mtu update handle=0x%04X tx=%u rx=%u",
+                conn_handle,
+                max_tx_octets,
+                max_rx_octets);
 }
 
 static gapCentralRoleCB_t g_ble_role_cb = {
@@ -463,6 +489,11 @@ void BleHostMgr_Init(void)
 
     (void)GAPRole_CentralStartDevice(g_ble_mgr.task_id, 0, &g_ble_role_cb);
     g_ble_mgr.state = BLE_G_IDLE;
+    APP_LOG_BLE("init task=%u links=%u scan_int=%u scan_win=%u",
+                g_ble_mgr.task_id,
+                APP_BLE_MAX_LINKS,
+                g_ble_mgr.scan_interval,
+                g_ble_mgr.scan_window);
 }
 
 void BleHostMgr_HandleMgmt(const vp_hdr_t *hdr, const uint8_t *payload, uint16_t payload_len)
@@ -470,6 +501,17 @@ void BleHostMgr_HandleMgmt(const vp_hdr_t *hdr, const uint8_t *payload, uint16_t
     uint8_t slot;
     vp_status_t status;
     bStatus_t ble_status;
+
+    if(hdr == 0)
+    {
+        APP_LOG_BLE("mgmt hdr null");
+        return;
+    }
+
+    APP_LOG_BLE("cmd opcode=0x%02X seq=%u len=%u",
+                hdr->opcode,
+                hdr->seq,
+                payload_len);
 
     switch(hdr->opcode)
     {
@@ -494,6 +536,13 @@ void BleHostMgr_HandleMgmt(const vp_hdr_t *hdr, const uint8_t *payload, uint16_t
             GAP_SetParamValue(TGAP_DISC_SCAN_INT, g_ble_mgr.scan_interval);
             GAP_SetParamValue(TGAP_DISC_SCAN_WIND, g_ble_mgr.scan_window);
             GAP_SetParamValue(TGAP_DISC_SCAN, g_ble_mgr.scan_duration);
+            APP_LOG_BLE("set scan int=%u win=%u dur=%u mode=%u active=%u wl=%u",
+                        g_ble_mgr.scan_interval,
+                        g_ble_mgr.scan_window,
+                        g_ble_mgr.scan_duration,
+                        g_ble_mgr.scan_mode,
+                        g_ble_mgr.scan_active,
+                        g_ble_mgr.scan_white_list);
             BleHostMgr_QueueStatusRsp(hdr, VP_STATUS_OK);
             return;
 
@@ -513,6 +562,10 @@ void BleHostMgr_HandleMgmt(const vp_hdr_t *hdr, const uint8_t *payload, uint16_t
 
             g_ble_mgr.active_scan = 1U;
             BleHostMgr_UpdateState();
+            APP_LOG_BLE("scan start mode=%u active=%u wl=%u",
+                        g_ble_mgr.scan_mode,
+                        g_ble_mgr.scan_active,
+                        g_ble_mgr.scan_white_list);
             BleHostMgr_QueueStatusRsp(hdr, VP_STATUS_OK);
             return;
 
@@ -526,6 +579,7 @@ void BleHostMgr_HandleMgmt(const vp_hdr_t *hdr, const uint8_t *payload, uint16_t
 
             g_ble_mgr.active_scan = 0U;
             BleHostMgr_UpdateState();
+            APP_LOG_BLE("scan stop");
             BleHostMgr_QueueStatusRsp(hdr, VP_STATUS_OK);
             return;
 
@@ -555,11 +609,21 @@ void BleHostMgr_HandleMgmt(const vp_hdr_t *hdr, const uint8_t *payload, uint16_t
             g_ble_mgr.slots[slot].state = BLE_SLOT_STATE_CONNECTING;
             g_ble_mgr.slots[slot].addr_type = payload[1];
             memcpy(g_ble_mgr.slots[slot].addr, &payload[2], B_ADDR_LEN);
+            APP_LOG_BLE("connect req slot=%u addr_type=%u addr=%02X:%02X:%02X:%02X:%02X:%02X",
+                        slot,
+                        payload[1],
+                        payload[7],
+                        payload[6],
+                        payload[5],
+                        payload[4],
+                        payload[3],
+                        payload[2]);
             ble_status = GAPRole_CentralEstablishLink(FALSE, FALSE, payload[1], &g_ble_mgr.slots[slot].addr[0]);
             if(ble_status != SUCCESS)
             {
                 g_ble_mgr.pending_connect_slot = 0xFFU;
                 g_ble_mgr.slots[slot].state = BLE_SLOT_STATE_IDLE;
+                APP_LOG_BLE("connect submit fail slot=%u ble=0x%02X", slot, ble_status);
                 BleHostMgr_QueueStatusRsp(hdr, VP_STATUS_ERR_BUSY);
                 return;
             }
@@ -577,6 +641,10 @@ void BleHostMgr_HandleMgmt(const vp_hdr_t *hdr, const uint8_t *payload, uint16_t
             }
 
             ble_status = GAPRole_TerminateLink(g_ble_mgr.slots[slot].conn_handle);
+            APP_LOG_BLE("disconnect req slot=%u handle=0x%04X ble=0x%02X",
+                        slot,
+                        g_ble_mgr.slots[slot].conn_handle,
+                        ble_status);
             BleHostMgr_QueueStatusRsp(hdr, BleHostMgr_MapBleStatus(ble_status));
             return;
 
@@ -723,6 +791,10 @@ void BleHostMgr_HandleMgmt(const vp_hdr_t *hdr, const uint8_t *payload, uint16_t
             }
 
             ble_status = GAPRole_ReadRssiCmd(g_ble_mgr.slots[slot].conn_handle);
+            APP_LOG_BLE("read rssi slot=%u handle=0x%04X ble=0x%02X",
+                        slot,
+                        g_ble_mgr.slots[slot].conn_handle,
+                        ble_status);
             BleHostMgr_QueueStatusRsp(hdr, BleHostMgr_MapBleStatus(ble_status));
             return;
 
@@ -735,6 +807,14 @@ void BleHostMgr_HandleMgmt(const vp_hdr_t *hdr, const uint8_t *payload, uint16_t
                                                 BleHostMgr_ReadLe16(&payload[3]),
                                                 BleHostMgr_ReadLe16(&payload[5]),
                                                 BleHostMgr_ReadLe16(&payload[7]));
+                APP_LOG_BLE("update conn slot=%u handle=0x%04X min=%u max=%u latency=%u timeout=%u ble=0x%02X",
+                            slot,
+                            g_ble_mgr.slots[slot].conn_handle,
+                            BleHostMgr_ReadLe16(&payload[1]),
+                            BleHostMgr_ReadLe16(&payload[3]),
+                            BleHostMgr_ReadLe16(&payload[5]),
+                            BleHostMgr_ReadLe16(&payload[7]),
+                            ble_status);
                 status = BleHostMgr_MapBleStatus(ble_status);
             }
             else if(status == VP_STATUS_OK)

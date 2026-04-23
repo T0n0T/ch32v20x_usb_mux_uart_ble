@@ -5,6 +5,8 @@
 #include "config.h"
 #include "hal.h"
 #include "heartbeat.h"
+#include "app_log.h"
+#include "app_task.h"
 
 tmosTaskID halTaskID = INVALID_TASK_ID;
 uint32_t g_LLE_IRQLibHandlerLocation;
@@ -118,13 +120,16 @@ extern void BleHostMgr_Init(void);
 
 void APP_Init(void)
 {
+    AppLog_Init();
     WCHBLE_Init();
     HAL_Init();
+    AppLog_TaskInit();
     Heartbeat_Init();
     BleHostMgr_Init();
     USBRX_Init();
     USBTX_Init();
     UartMgr_Init();
     VendorRouter_Init();
+    AppTask_Init();
     USBMUX_DeviceInit();
 }

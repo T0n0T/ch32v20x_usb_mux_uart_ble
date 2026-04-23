@@ -3,6 +3,8 @@
 #include <string.h>
 
 #include "../config/board_caps.h"
+#include "../include/app_log.h"
+#include "../include/app_task.h"
 #include "../proto/vendor_proto_codec.h"
 #include "usb_dev_ll.h"
 
@@ -119,6 +121,12 @@ static int USBTX_QueueFrame(usbtx_queue_t *queue,
     {
         g_usb_tx_ctx.dropped_bitmap |= dropped_bit;
         g_usb_tx_ctx.hint_dirty = 1U;
+        APP_LOG_USB("queue drop oversize ch=0x%02X id=%u msg=0x%02X op=0x%02X len=%u",
+                    ch_type,
+                    ch_id,
+                    msg_type,
+                    opcode,
+                    payload_len);
         return -1;
     }
 
@@ -126,6 +134,12 @@ static int USBTX_QueueFrame(usbtx_queue_t *queue,
     {
         g_usb_tx_ctx.dropped_bitmap |= dropped_bit;
         g_usb_tx_ctx.hint_dirty = 1U;
+        APP_LOG_USB("queue full ch=0x%02X id=%u msg=0x%02X op=0x%02X len=%u",
+                    ch_type,
+                    ch_id,
+                    msg_type,
+                    opcode,
+                    payload_len);
         return -1;
     }
 
@@ -144,6 +158,11 @@ static int USBTX_QueueFrame(usbtx_queue_t *queue,
     {
         g_usb_tx_ctx.dropped_bitmap |= dropped_bit;
         g_usb_tx_ctx.hint_dirty = 1U;
+        APP_LOG_USB("encode hdr fail ch=0x%02X id=%u msg=0x%02X op=0x%02X",
+                    ch_type,
+                    ch_id,
+                    msg_type,
+                    opcode);
         return -1;
     }
 
@@ -157,6 +176,15 @@ static int USBTX_QueueFrame(usbtx_queue_t *queue,
     queue->tail = (uint8_t)((queue->tail + 1U) % USBTX_QUEUE_DEPTH);
     queue->count++;
     USBTX_UpdatePendingBitmap();
+    AppTask_KickUsbTx();
+    APP_LOG_USB("queue ok ch=0x%02X id=%u msg=0x%02X op=0x%02X seq=%u len=%u count=%u",
+                ch_type,
+                ch_id,
+                msg_type,
+                opcode,
+                hdr.seq,
+                frame->len,
+                queue->count);
 
     return 0;
 }

@@ -1,6 +1,8 @@
 APP_SRCS := \
 	App/usb_mux_dev/main.c \
 	App/usb_mux_dev/app_init.c \
+	App/usb_mux_dev/app_task.c \
+	App/usb_mux_dev/app_log.c \
 	App/usb_mux_dev/heartbeat.c \
 	App/usb_mux_dev/common/ring_buffer.c \
 	App/usb_mux_dev/common/event_queue.c \
@@ -49,6 +51,7 @@ INCLUDES := \
 	-IApp/usb_mux_dev/proto \
 	-IApp/usb_mux_dev/uart \
 	-IApp/usb_mux_dev/usb \
+	-I$(OUT_DIR)/generate \
 	-IBLE \
 	-ICore \
 	-IDebug \

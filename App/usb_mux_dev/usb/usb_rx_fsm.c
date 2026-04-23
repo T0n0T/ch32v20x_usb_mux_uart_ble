@@ -4,6 +4,8 @@
 
 #include "../common/ring_buffer.h"
 #include "../config/board_caps.h"
+#include "../include/app_log.h"
+#include "../include/app_task.h"
 #include "../proto/vendor_proto.h"
 #include "../proto/vendor_proto_codec.h"
 #include "../proto/vendor_router.h"
@@ -147,6 +149,7 @@ void USBRX_PushBytes(const uint8_t *data, uint16_t len)
     }
 
     (void)RingBuffer_Write(&g_usb_rx_ctx.raw_rb, data, len);
+    AppTask_KickUsbRx();
 }
 
 void USBRX_Process(void)
@@ -191,6 +194,14 @@ void USBRX_Process(void)
                 continue;
             }
 
+            APP_LOG_USB("rx hdr ch=0x%02X id=%u msg=0x%02X op=0x%02X seq=%u total=%u",
+                        g_usb_rx_ctx.hdr.ch_type,
+                        g_usb_rx_ctx.hdr.ch_id,
+                        g_usb_rx_ctx.hdr.msg_type,
+                        g_usb_rx_ctx.hdr.opcode,
+                        g_usb_rx_ctx.hdr.seq,
+                        g_usb_rx_ctx.hdr.total_len);
+
             g_usb_rx_ctx.frame_target_len = g_usb_rx_ctx.hdr.total_len;
 
             if(g_usb_rx_ctx.frame_target_len == VP_HEADER_LEN)
@@ -211,6 +222,12 @@ void USBRX_Process(void)
 
         if(g_usb_rx_ctx.state == USB_RX_DISPATCH)
         {
+            APP_LOG_USB("rx dispatch ch=0x%02X id=%u msg=0x%02X op=0x%02X payload=%u",
+                        g_usb_rx_ctx.hdr.ch_type,
+                        g_usb_rx_ctx.hdr.ch_id,
+                        g_usb_rx_ctx.hdr.msg_type,
+                        g_usb_rx_ctx.hdr.opcode,
+                        g_usb_rx_ctx.hdr.payload_len);
             VendorRouter_Dispatch(&g_usb_rx_ctx.hdr,
                                   &g_usb_rx_ctx.frame_buf[VP_HEADER_LEN],
                                   g_usb_rx_ctx.hdr.payload_len);

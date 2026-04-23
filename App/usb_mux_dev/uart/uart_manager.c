@@ -4,6 +4,7 @@
 
 #include "board_caps.h"
 #include "ch32v20x_gpio.h"
+#include "app_task.h"
 #include "ring_buffer.h"
 #include "uart_map_config.h"
 #include "uart_port_ch32v20x.h"
@@ -379,6 +380,7 @@ vp_status_t UartMgr_WriteFromHost(uint8_t logic_port, const uint8_t *payload, ui
     }
 
     UARTPort_TryKickTx(logic_port);
+    AppTask_KickUart();
     return (written == payload_len) ? VP_STATUS_OK : VP_STATUS_ERR_OVERFLOW;
 }
 
@@ -426,6 +428,7 @@ void UartMgr_IrqRxByte(uint8_t logic_port, uint8_t data)
     }
 
     port->rx_bytes++;
+    AppTask_KickUart();
 }
 
 int UartMgr_IrqTxNextByte(uint8_t logic_port, uint8_t *data)
