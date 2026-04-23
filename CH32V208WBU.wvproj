@@ -143,7 +143,8 @@
 							"${project}/Core",
 							"${project}/Debug",
 							"${project}/Peripheral/inc",
-							"${project}/User"
+							"${project}/User",
+							"${project}/Out/generate"
 						],
 						"include_system_paths": [],
 						"include_files": []
@@ -349,7 +350,7 @@
 		"address": "0x08000000",
 		"target_path": "obj/CH32V208WBU.hex",
 		"clkSpeed": "High",
-		"debug_interface_mode": "",
+		"debug_interface_mode": "1-wire serial",
 		"erase": true,
 		"program": true,
 		"verify": true,
@@ -369,11 +370,11 @@
 			"telnetport": 4444,
 			"tclport": 6666,
 			"configOptions": [
-				"-f \"${WCH:OpenOCD:default}/bin/wch-riscv.cfg\""
+				"-f \"${WCH:OpenOCD:default}/bin/wch-riscv.cfg\" -c noload"
 			],
 			"host": "localhost",
 			"port": 3333,
-			"skipDownloadBeforeDebug": false,
+			"skipDownloadBeforeDebug": true,
 			"enablePageEraser": false,
 			"enableNoZeroWaitingAreaFlash": false
 		},
@@ -389,7 +390,7 @@
 		},
 		"startup": {
 			"initCommands": {
-				"initReset": true,
+				"initReset": false,
 				"initResetType": "init",
 				"additionalCommands": [],
 				"armSemihosting": false,

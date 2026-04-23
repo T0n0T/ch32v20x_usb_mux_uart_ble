@@ -6,6 +6,7 @@
 *.map
 *.hex
 *.lst
+Out/
 **/.cache
 **/compile_commands.json
 

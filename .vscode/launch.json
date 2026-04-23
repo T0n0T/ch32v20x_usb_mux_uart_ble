@@ -10,13 +10,12 @@
             "name": "Launch(remote)",
             "program": "Out/ch32v208_usb_mux_ble_host.elf",            
             "cwd": "${workspaceRoot}",
-            "debuggerPath": "/opt/riscv-wch-toolchain/bin/riscv-none-embed-gdb",
+            "debuggerPath": "/opt/riscv-wch-gcc/bin/riscv-none-embed-gdb",
             "stopAtEntry": true,
             "remote": {            
                 "enabled": true,
                 "address": ":3333",
                 "mode": "remote",            
-                "execfile": "Out/ch32v208_usb_mux_ble_host.elf"
             }
         }
     ]
