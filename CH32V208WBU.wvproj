@@ -45,13 +45,14 @@
 				},
 				"parallelizationNumber": "optimal",
 				"stop_on_first_build_error": true,
-				"pre_script": "make Out/generate/app_build_info.h",
+				"pre_script": "make ${project}/Out/generate/app_build_info.h",
 				"pre_script_description": "",
 				"post_script": "",
 				"post_script_description": "",
 				"excludeResources": [
 					"${project}/Startup/startup_ch32v20x_D6.S",
-					"${project}/Startup/startup_ch32v20x_D8.S"
+					"${project}/Startup/startup_ch32v20x_D8.S",
+					"${project}/Host"
 				],
 				"optimization": {
 					"level": "size",
