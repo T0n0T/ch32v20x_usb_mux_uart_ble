@@ -8,6 +8,7 @@
 #define USBDEV_EP0_SIZE 64U
 #define USBDEV_EP1_SIZE 8U
 #define USBDEV_EP2_SIZE 64U
+#define USBDEV_EP3_SIZE 64U
 
 void USBMUX_DeviceInit(void);
 

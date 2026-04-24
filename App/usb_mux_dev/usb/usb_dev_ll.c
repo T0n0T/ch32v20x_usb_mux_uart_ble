@@ -23,8 +23,6 @@
 #define USB_DESC_TYPE_CONFIGURATION  0x02U
 #define USB_DESC_TYPE_STRING         0x03U
 
-#define USB_EP2_DMA_SIZE             (USBDEV_EP2_SIZE * 2U)
-#define USB_EP2_IN_OFFSET            USBDEV_EP2_SIZE
 #define USB_ADDRESS_PENDING_NONE     0xFFU
 
 #if defined(__GNUC__) && defined(__riscv)
@@ -59,9 +57,10 @@ typedef struct {
 
 static usbdev_ctx_t g_usbdev_ctx;
 
-static __attribute__((aligned(4))) uint8_t g_ep0_dma[USBDEV_EP0_SIZE];
-static __attribute__((aligned(4))) uint8_t g_ep1_dma[USBDEV_EP1_SIZE];
-static __attribute__((aligned(4))) uint8_t g_ep2_dma[USB_EP2_DMA_SIZE];
+static __attribute__((aligned(64))) uint8_t g_ep0_dma[USBDEV_EP0_SIZE];
+static __attribute__((aligned(64))) uint8_t g_ep1_dma[USBDEV_EP1_SIZE];
+static __attribute__((aligned(64))) uint8_t g_ep2_dma[USBDEV_EP2_SIZE];
+static __attribute__((aligned(64))) uint8_t g_ep3_dma[USBDEV_EP3_SIZE];
 
 static const uint8_t g_usb_dev_desc[] = {
     0x12, 0x01, 0x10, 0x01, 0xFF, 0x00, 0x00, USBDEV_EP0_SIZE,
@@ -73,7 +72,7 @@ static const uint8_t g_usb_cfg_desc[] = {
     0x09, 0x02, 0x27, 0x00, 0x01, 0x01, 0x00, 0x80, 0x32,
     0x09, 0x04, 0x00, 0x00, 0x03, 0xFF, 0x00, 0x00, 0x00,
     0x07, 0x05, 0x81, 0x03, USBDEV_EP1_SIZE, 0x00, 0x01,
-    0x07, 0x05, 0x02, 0x02, USBDEV_EP2_SIZE, 0x00, 0x00,
+    0x07, 0x05, 0x03, 0x02, USBDEV_EP3_SIZE, 0x00, 0x00,
     0x07, 0x05, 0x82, 0x02, USBDEV_EP2_SIZE, 0x00, 0x00,
 };
 
@@ -173,7 +172,7 @@ static void USBDEV_ResetDataEndpoints(void)
     USBFSD->UEP1_TX_CTRL = USBFS_UEP_T_RES_NAK;
     USBFSD->UEP2_TX_LEN = 0U;
     USBFSD->UEP2_TX_CTRL = USBFS_UEP_T_AUTO_TOG | USBFS_UEP_T_RES_NAK;
-    USBFSD->UEP2_RX_CTRL = USBFS_UEP_R_AUTO_TOG | USBFS_UEP_R_RES_ACK;
+    USBFSD->UEP3_RX_CTRL = USBFS_UEP_R_AUTO_TOG | USBFS_UEP_R_RES_ACK;
 }
 
 static void USBDEV_LoadEp0Tx(const uint8_t *data, uint16_t len)
@@ -371,7 +370,7 @@ static void USBDEV_LoadEp2Chunk(void)
         chunk_len = USBDEV_EP2_SIZE;
     }
 
-    memcpy(&g_ep2_dma[USB_EP2_IN_OFFSET], &g_usbdev_ctx.ep2_tx_stage[g_usbdev_ctx.ep2_tx_offset], chunk_len);
+    memcpy(g_ep2_dma, &g_usbdev_ctx.ep2_tx_stage[g_usbdev_ctx.ep2_tx_offset], chunk_len);
     g_usbdev_ctx.ep2_tx_offset += chunk_len;
     USBFSD->UEP2_TX_LEN = chunk_len;
     USBFSD->UEP2_TX_CTRL = (uint8_t)((USBFSD->UEP2_TX_CTRL & ~USBFS_UEP_T_RES_MASK) | USBFS_UEP_T_RES_ACK);
@@ -407,31 +406,28 @@ static void USBDEV_HandleTransfer(void)
         return;
     }
 
-    if(endpoint != 2U)
-    {
-        return;
-    }
-
-    if(token == USBFS_UIS_TOKEN_OUT)
+    if((endpoint == 3U) && (token == USBFS_UIS_TOKEN_OUT))
     {
         uint16_t rx_len = (uint16_t)USBFSD->RX_LEN;
 
-        if(rx_len > USBDEV_EP2_SIZE)
+        if(rx_len > USBDEV_EP3_SIZE)
         {
-            rx_len = USBDEV_EP2_SIZE;
+            rx_len = USBDEV_EP3_SIZE;
         }
 
         if(rx_len > 0U)
         {
-            APP_LOG_USB_DEBUG("ep2 out len=%u", rx_len);
+            APP_LOG_USB_DEBUG("ep3 out len=%u", rx_len);
         }
-        USBRX_PushBytes(g_ep2_dma, rx_len);
+        USBRX_PushBytes(g_ep3_dma, rx_len);
         AppTask_KickUsbRx();
-        USBFSD->UEP2_RX_CTRL = USBFS_UEP_R_AUTO_TOG | USBFS_UEP_R_RES_ACK;
+        USBFSD->UEP3_RX_CTRL = (uint8_t)((USBFSD->UEP3_RX_CTRL & USBFS_UEP_R_TOG) |
+                                          USBFS_UEP_R_AUTO_TOG |
+                                          USBFS_UEP_R_RES_ACK);
         return;
     }
 
-    if(token == USBFS_UIS_TOKEN_IN)
+    if((endpoint == 2U) && (token == USBFS_UIS_TOKEN_IN))
     {
         if(g_usbdev_ctx.ep2_tx_offset < g_usbdev_ctx.ep2_tx_len)
         {
@@ -443,8 +439,11 @@ static void USBDEV_HandleTransfer(void)
             APP_LOG_USB_DEBUG("ep2 in done len=%u", g_usbdev_ctx.ep2_tx_len);
             AppTask_KickUsbTx();
             USBFSD->UEP2_TX_LEN = 0U;
-            USBFSD->UEP2_TX_CTRL = USBFS_UEP_T_AUTO_TOG | USBFS_UEP_T_RES_NAK;
+            USBFSD->UEP2_TX_CTRL = (uint8_t)((USBFSD->UEP2_TX_CTRL & USBFS_UEP_T_TOG) |
+                                              USBFS_UEP_T_AUTO_TOG |
+                                              USBFS_UEP_T_RES_NAK);
         }
+        return;
     }
 }
 
@@ -460,13 +459,14 @@ void USBMUX_DeviceInit(void)
     USBFSD->BASE_CTRL = 0U;
 
     USBFSD->UEP4_1_MOD = USBFS_UEP1_TX_EN;
-    USBFSD->UEP2_3_MOD = USBFS_UEP2_RX_EN | USBFS_UEP2_TX_EN | USBFS_UEP2_BUF_MOD;
+    USBFSD->UEP2_3_MOD = USBFS_UEP2_TX_EN | USBFS_UEP3_RX_EN;
     USBFSD->UEP5_6_MOD = 0U;
     USBFSD->UEP7_MOD = 0U;
 
     USBFSD->UEP0_DMA = (uint32_t)(uintptr_t)g_ep0_dma;
     USBFSD->UEP1_DMA = (uint32_t)(uintptr_t)g_ep1_dma;
     USBFSD->UEP2_DMA = (uint32_t)(uintptr_t)g_ep2_dma;
+    USBFSD->UEP3_DMA = (uint32_t)(uintptr_t)g_ep3_dma;
 
     USBDEV_ResetDataEndpoints();
 

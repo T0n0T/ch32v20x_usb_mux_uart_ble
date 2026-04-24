@@ -44,7 +44,7 @@ def main() -> int:
 
     expected_debug_messages = (
         "std req type=",
-        "ep2 out len=",
+        "ep3 out len=",
         "ep2 in done len=",
         "hint send pending=",
         "frame send start len=",
