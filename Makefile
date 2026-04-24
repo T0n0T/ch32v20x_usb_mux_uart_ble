@@ -5,7 +5,7 @@ include Scripts/sources.mk
 include Scripts/toolchain.mk
 include Scripts/rules.mk
 
-.PHONY: all clean size list compile_commands flash flash-sdi flash-openocd flatten-wch-lib debug-openocd debug-gdb
+.PHONY: all clean size list compile_commands test-heartbeat test-log-levels flash flash-sdi flash-openocd flatten-wch-lib debug-openocd debug-gdb
 
 all: compile_commands.json $(OUT_DIR)/$(TARGET).elf $(OUT_DIR)/$(TARGET).hex $(OUT_DIR)/$(TARGET).lst
 
@@ -19,6 +19,14 @@ size: $(OUT_DIR)/$(TARGET).elf
 
 list: $(OUT_DIR)/$(TARGET).elf
 	$(OBJDUMP) --source --all-headers --demangle -M xw --line-numbers --wide $< > $(OUT_DIR)/$(TARGET).lst
+
+test-heartbeat:
+	mkdir -p "$(OUT_DIR)"
+	cc -std=c11 -Wall -Wextra -Werror -O2 Scripts/test_heartbeat_math.c -o "$(OUT_DIR)/test_heartbeat_math"
+	"$(OUT_DIR)/test_heartbeat_math"
+
+test-log-levels:
+	python3 Scripts/test_log_levels.py
 
 flash: $(OUT_DIR)/$(TARGET).hex
 	$(PYTHON) "$(WCH_FLASH_SCRIPT)" --file "$<" --chip "$(WCH_FLASH_CHIP)" --iface "$(WCH_FLASH_IFACE)" --speed "$(WCH_FLASH_SPEED)" --ops "$(WCH_FLASH_OPS)" --address "$(WCH_FLASH_ADDR)" --comm-lib-dir "$(WCH_COMM_LIB_DIR)"

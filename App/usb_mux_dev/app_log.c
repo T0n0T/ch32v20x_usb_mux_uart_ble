@@ -130,7 +130,7 @@ void AppLog_Init(void)
 void AppLog_TaskInit(void)
 {
     g_log_task_id = TMOS_ProcessEventRegister(AppLog_ProcessEvent);
-    AppLog_Printf("[LOG] tmos task=%u\r\n", g_log_task_id);
+    APP_LOG_INFO("LOG", "tmos task=%u", g_log_task_id);
 }
 
 void AppLog_Printf(const char *format, ...)

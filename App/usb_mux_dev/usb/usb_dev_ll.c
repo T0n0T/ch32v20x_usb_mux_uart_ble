@@ -132,22 +132,26 @@ static void USBDEV_ConfigClock(void)
 
 static void USBDEV_LogLineState(const char *tag)
 {
+#if APP_LOG_ENABLED(APP_LOG_LEVEL_DEBUG)
     uint8_t base_ctrl = USBFSD->BASE_CTRL;
     uint8_t udev_ctrl = USBFSD->UDEV_CTRL;
     uint8_t int_en = USBFSD->INT_EN;
     uint8_t int_fg = USBFSD->INT_FG;
     uint8_t int_st = USBFSD->INT_ST;
 
-    APP_LOG_USB("%s ext=0x%08lX base=0x%02X udev=0x%02X ien=0x%02X ifg=0x%02X ist=0x%02X dp=%u dm=%u",
-                tag,
-                (unsigned long)EXTEN->EXTEN_CTR,
-                base_ctrl,
-                udev_ctrl,
-                int_en,
-                int_fg,
-                int_st,
-                (udev_ctrl & USBFS_UD_DP_PIN) != 0U ? 1U : 0U,
-                (udev_ctrl & USBFS_UD_DM_PIN) != 0U ? 1U : 0U);
+    APP_LOG_USB_DEBUG("%s ext=0x%08lX base=0x%02X udev=0x%02X ien=0x%02X ifg=0x%02X ist=0x%02X dp=%u dm=%u",
+                      tag,
+                      (unsigned long)EXTEN->EXTEN_CTR,
+                      base_ctrl,
+                      udev_ctrl,
+                      int_en,
+                      int_fg,
+                      int_st,
+                      (udev_ctrl & USBFS_UD_DP_PIN) != 0U ? 1U : 0U,
+                      (udev_ctrl & USBFS_UD_DM_PIN) != 0U ? 1U : 0U);
+#else
+    (void)tag;
+#endif
 }
 
 static void USBDEV_ResetDataEndpoints(void)
@@ -216,7 +220,7 @@ static void USBDEV_StartEp0Data(const uint8_t *data, uint16_t len)
 
 static void USBDEV_StallEp0(void)
 {
-    APP_LOG_USB("ep0 stall");
+    APP_LOG_USB_WARNING("ep0 stall");
     USBFSD->UEP0_TX_CTRL = USBFS_UEP_T_TOG | USBFS_UEP_T_RES_STALL;
     USBFSD->UEP0_RX_CTRL = USBFS_UEP_R_TOG | USBFS_UEP_R_RES_STALL;
 }
@@ -226,12 +230,12 @@ static void USBDEV_HandleStandardRequest(const usb_setup_pkt_t *setup)
     const uint8_t *desc = 0;
     uint16_t desc_len = 0U;
 
-    APP_LOG_USB("std req type=0x%02X req=0x%02X wValue=0x%04X wIndex=0x%04X wLen=%u",
-                setup->bmRequestType,
-                setup->bRequest,
-                setup->wValue,
-                setup->wIndex,
-                setup->wLength);
+    APP_LOG_USB_DEBUG("std req type=0x%02X req=0x%02X wValue=0x%04X wIndex=0x%04X wLen=%u",
+                      setup->bmRequestType,
+                      setup->bRequest,
+                      setup->wValue,
+                      setup->wIndex,
+                      setup->wLength);
 
     switch(setup->bRequest)
     {
@@ -291,13 +295,13 @@ static void USBDEV_HandleStandardRequest(const usb_setup_pkt_t *setup)
 
         case USB_REQ_SET_ADDRESS:
             g_usbdev_ctx.ep0.pending_address = (uint8_t)(setup->wValue & USBFS_USB_ADDR_MASK);
-            APP_LOG_USB("set address pending=%u", g_usbdev_ctx.ep0.pending_address);
+            APP_LOG_USB_INFO("set address pending=%u", g_usbdev_ctx.ep0.pending_address);
             USBDEV_LoadEp0Tx(0, 0U);
             break;
 
         case USB_REQ_SET_CONFIGURATION:
             g_usbdev_ctx.configured = (uint8_t)(setup->wValue & 0xFFU);
-            APP_LOG_USB("set configuration=%u", g_usbdev_ctx.configured);
+            APP_LOG_USB_INFO("set configuration=%u", g_usbdev_ctx.configured);
             USBDEV_LoadEp0Tx(0, 0U);
             break;
 
@@ -341,7 +345,7 @@ static void USBDEV_HandleEp0In(void)
     if(g_usbdev_ctx.ep0.pending_address != USB_ADDRESS_PENDING_NONE)
     {
         USBFSD->DEV_ADDR = g_usbdev_ctx.ep0.pending_address;
-        APP_LOG_USB("address applied=%u", g_usbdev_ctx.ep0.pending_address);
+        APP_LOG_USB_INFO("address applied=%u", g_usbdev_ctx.ep0.pending_address);
         g_usbdev_ctx.ep0.pending_address = USB_ADDRESS_PENDING_NONE;
     }
 
@@ -419,7 +423,7 @@ static void USBDEV_HandleTransfer(void)
 
         if(rx_len > 0U)
         {
-            APP_LOG_USB("ep2 out len=%u", rx_len);
+            APP_LOG_USB_DEBUG("ep2 out len=%u", rx_len);
         }
         USBRX_PushBytes(g_ep2_dma, rx_len);
         AppTask_KickUsbRx();
@@ -436,7 +440,7 @@ static void USBDEV_HandleTransfer(void)
         else
         {
             g_usbdev_ctx.ep2_tx_active = 0U;
-            APP_LOG_USB("ep2 in done len=%u", g_usbdev_ctx.ep2_tx_len);
+            APP_LOG_USB_DEBUG("ep2 in done len=%u", g_usbdev_ctx.ep2_tx_len);
             AppTask_KickUsbTx();
             USBFSD->UEP2_TX_LEN = 0U;
             USBFSD->UEP2_TX_CTRL = USBFS_UEP_T_AUTO_TOG | USBFS_UEP_T_RES_NAK;
@@ -473,7 +477,7 @@ void USBMUX_DeviceInit(void)
     USBFSD->UDEV_CTRL = USBFS_UD_PD_DIS | USBFS_UD_PORT_EN;
 
     NVIC_EnableIRQ(USBHD_IRQn);
-    APP_LOG_USB("device init");
+    APP_LOG_USB_INFO("device init");
     USBDEV_LogLineState("line state after init");
 }
 
@@ -501,7 +505,7 @@ int USBDEV_SendHint(const vp_irq_hint_t *hint)
 {
     if((hint == 0) || (USBDEV_CanSendHint() == 0))
     {
-        APP_LOG_USB("hint send reject");
+        APP_LOG_USB_WARNING("hint send reject");
         return -1;
     }
 
@@ -509,9 +513,9 @@ int USBDEV_SendHint(const vp_irq_hint_t *hint)
     g_usbdev_ctx.ep1_tx_busy = 1U;
     USBFSD->UEP1_TX_LEN = sizeof(*hint);
     USBFSD->UEP1_TX_CTRL = USBFS_UEP_T_RES_ACK;
-    APP_LOG_USB("hint send pending=0x%04X dropped=0x%04X",
-                hint->pending_bitmap,
-                hint->dropped_bitmap);
+    APP_LOG_USB_DEBUG("hint send pending=0x%04X dropped=0x%04X",
+                      hint->pending_bitmap,
+                      hint->dropped_bitmap);
 
     return 0;
 }
@@ -520,7 +524,7 @@ int USBDEV_SendFrame(const uint8_t *data, uint16_t len)
 {
     if((data == 0) || (len == 0U) || (len > APP_USB_MAX_FRAME_LEN) || (USBDEV_CanSendFrame() == 0))
     {
-        APP_LOG_USB("frame send reject len=%u", len);
+        APP_LOG_USB_WARNING("frame send reject len=%u", len);
         return -1;
     }
 
@@ -528,7 +532,7 @@ int USBDEV_SendFrame(const uint8_t *data, uint16_t len)
     g_usbdev_ctx.ep2_tx_len = len;
     g_usbdev_ctx.ep2_tx_offset = 0U;
     g_usbdev_ctx.ep2_tx_active = 1U;
-    APP_LOG_USB("frame send start len=%u", len);
+    APP_LOG_USB_DEBUG("frame send start len=%u", len);
     USBDEV_LoadEp2Chunk();
 
     return 0;
@@ -540,16 +544,16 @@ void USBHD_IRQHandler(void)
 {
     uint8_t int_flag = USBFSD->INT_FG;
 
-    APP_LOG_USB("irq ifg=0x%02X ist=0x%02X mis=0x%02X rx=%lu",
-                int_flag,
-                USBFSD->INT_ST,
-                USBFSD->MIS_ST,
-                (unsigned long)USBFSD->RX_LEN);
+    APP_LOG_USB_DEBUG("irq ifg=0x%02X ist=0x%02X mis=0x%02X rx=%lu",
+                      int_flag,
+                      USBFSD->INT_ST,
+                      USBFSD->MIS_ST,
+                      (unsigned long)USBFSD->RX_LEN);
 
     if((int_flag & USBFS_UIF_BUS_RST) != 0U)
     {
         USBDEV_ResetDataEndpoints();
-        APP_LOG_USB("bus reset");
+        APP_LOG_USB_INFO("bus reset");
         USBDEV_LogLineState("line state on bus reset");
         USBFSD->INT_FG = USBFS_UIF_BUS_RST;
         int_flag &= (uint8_t)~USBFS_UIF_BUS_RST;
@@ -564,7 +568,7 @@ void USBHD_IRQHandler(void)
 
     if((int_flag & USBFS_UIF_SUSPEND) != 0U)
     {
-        APP_LOG_USB("suspend/resume");
+        APP_LOG_USB_INFO("suspend/resume");
         USBDEV_LogLineState("line state on suspend");
         USBFSD->INT_FG = USBFS_UIF_SUSPEND;
         int_flag &= (uint8_t)~USBFS_UIF_SUSPEND;
@@ -572,7 +576,7 @@ void USBHD_IRQHandler(void)
 
     if((int_flag & USBFS_UIF_FIFO_OV) != 0U)
     {
-        APP_LOG_USB("fifo overflow");
+        APP_LOG_USB_WARNING("fifo overflow");
         USBFSD->INT_FG = USBFS_UIF_FIFO_OV;
     }
 }

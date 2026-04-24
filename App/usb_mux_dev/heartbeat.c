@@ -7,16 +7,27 @@
 typedef struct {
     uint8_t  initialized;
     uint8_t  led_on;
-    uint32_t next_tick_ms;
+    uint32_t next_deadline_tick;
 } heartbeat_ctx_t;
 
 static heartbeat_ctx_t g_heartbeat_ctx;
 
-static uint32_t Heartbeat_GetNowMs(void)
+static uint32_t Heartbeat_GetNowTick(void)
 {
-    uint32_t rtc_ticks = RTC_GetCounter();
+    return RTC_GetCounter();
+}
 
-    return (rtc_ticks * 1000U) / (CAB_LSIFQ / 2U);
+static uint32_t Heartbeat_GetPeriodTick(void)
+{
+    uint32_t period_tick =
+        (uint32_t)((((uint64_t)APP_HEARTBEAT_PERIOD_MS) * ((uint64_t)(CAB_LSIFQ / 2U))) / 1000ULL);
+
+    if(period_tick == 0U)
+    {
+        period_tick = 1U;
+    }
+
+    return period_tick;
 }
 
 static void Heartbeat_ApplyOutput(uint8_t led_on)
@@ -34,6 +45,7 @@ void Heartbeat_Init(void)
 {
 #if(APP_HEARTBEAT_ENABLE != 0U)
     GPIO_InitTypeDef gpio_cfg;
+    uint32_t period_tick = Heartbeat_GetPeriodTick();
 
     RCC_APB2PeriphClockCmd(APP_HEARTBEAT_GPIO_CLOCK, ENABLE);
 
@@ -45,28 +57,30 @@ void Heartbeat_Init(void)
     g_heartbeat_ctx.initialized = 1U;
     g_heartbeat_ctx.led_on = 0U;
     Heartbeat_ApplyOutput(0U);
-    g_heartbeat_ctx.next_tick_ms = Heartbeat_GetNowMs() + APP_HEARTBEAT_PERIOD_MS;
+    g_heartbeat_ctx.next_deadline_tick = Heartbeat_GetNowTick() + period_tick;
 #endif
 }
 
 void Heartbeat_Process(void)
 {
 #if(APP_HEARTBEAT_ENABLE != 0U)
-    uint32_t now_ms;
+    uint32_t now_tick;
+    uint32_t period_tick;
 
     if(g_heartbeat_ctx.initialized == 0U)
     {
         return;
     }
 
-    now_ms = Heartbeat_GetNowMs();
-    if((int32_t)(now_ms - g_heartbeat_ctx.next_tick_ms) < 0)
+    now_tick = Heartbeat_GetNowTick();
+    if((int32_t)(now_tick - g_heartbeat_ctx.next_deadline_tick) < 0)
     {
         return;
     }
 
+    period_tick = Heartbeat_GetPeriodTick();
     g_heartbeat_ctx.led_on ^= 1U;
     Heartbeat_ApplyOutput(g_heartbeat_ctx.led_on);
-    g_heartbeat_ctx.next_tick_ms += APP_HEARTBEAT_PERIOD_MS;
+    g_heartbeat_ctx.next_deadline_tick += period_tick;
 #endif
 }
